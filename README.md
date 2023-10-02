@@ -10,6 +10,7 @@ cd account
 cargo run -p api
 
 # should return 200 as a health check
+# installing httpie is required
 http get :8080/
 ```
 
