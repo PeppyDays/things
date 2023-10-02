@@ -4,9 +4,16 @@ This is an example repository to implement to do application with Rust. It aims 
 
 ## How to Run
 
-..
+```bash
+# run account api
+cd account
+cargo run -p api
+
+# should return 200 as a health check
+http get :8080/
+```
 
 ## Architecture Decision
 
-..
-
+- [Account Boundary Context](https://github.com/PeppyDays/things/wiki/Account-Boundary-Context)
+- [Command and Event Structure in Aggregate](https://github.com/PeppyDays/things/wiki/Command-and-Event-Structure-in-Aggregate)
