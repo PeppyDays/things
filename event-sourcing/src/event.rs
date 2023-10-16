@@ -53,7 +53,8 @@ impl<T: DomainEvent + Clone> Envelope<T> {
 mod tests {
     use std::str::FromStr;
 
-    use super::*;
+    use crate::event::*;
+    use crate::test::*;
 
     #[test]
     fn event_can_be_enveloped() {
@@ -109,26 +110,5 @@ mod tests {
         let deserialized = serde_json::from_str(&serialized).unwrap();
 
         assert_eq!(envelope, deserialized);
-    }
-
-    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-    enum OrderEvent {
-        OrderPlaced { id: Uuid },
-        OrderCompleted,
-    }
-
-    impl DomainEvent for OrderEvent {
-        fn get_name(&self) -> String {
-            match self {
-                OrderEvent::OrderPlaced { .. } => String::from("OrderPlaced"),
-                OrderEvent::OrderCompleted => String::from("OrderCompleted"),
-            }
-        }
-        fn get_version(&self) -> String {
-            match self {
-                OrderEvent::OrderPlaced { .. } => String::from("1.0.0"),
-                OrderEvent::OrderCompleted => String::from("1.0.0"),
-            }
-        }
     }
 }
