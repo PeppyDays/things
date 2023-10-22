@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::aggregate::EventSourced;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Envelope<A: EventSourced> {
     pub id: Uuid,
     pub aggregate_id: Uuid,

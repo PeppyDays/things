@@ -6,67 +6,77 @@ use std::{
 use async_trait::async_trait;
 use uuid::Uuid;
 
-use crate::{aggregate::EventSourced, event::Envelope};
+use crate::aggregate::EventSourced;
+use crate::envelope::Envelope;
+use crate::repository::interface::Repository;
+use crate::repository::serialization::SerializedEnvelope;
 
-use super::EventStore;
-
-#[derive(Debug, Clone)]
-pub struct MemoryRepository<A>
-    where
-        A: EventSourced + Send + Sync,
+#[derive(Debug)]
+pub struct MemoryRepository
 {
-    events: Arc<RwLock<HashMap<Uuid, Vec<Envelope<A::Event>>>>>,
+    rows: Arc<RwLock<HashMap<Uuid, Vec<SerializedEnvelope>>>>,
 }
 
-impl<A> MemoryRepository<A>
-    where
-        A: EventSourced + Send + Sync,
-{
+impl MemoryRepository {
     pub fn new() -> Self {
         Self {
-            events: Arc::default(),
+            rows: Arc::default(),
         }
     }
 }
 
 #[async_trait]
-impl<A> EventStore<A> for MemoryRepository<A>
+impl<A> Repository<A> for MemoryRepository
     where
-        A: EventSourced + Send + Sync,
+        A: EventSourced,
 {
     async fn save(&mut self, aggregate: &mut A) -> Result<(), String> {
-        let mut store = self.events.write().map_err(|_| {
+        let mut store = self.rows.write().map_err(|_| {
             String::from("Error happened while locking in-memory database for write. Try again.")
         })?;
+
+        let mut serialized_events = aggregate
+            .drain_pending_events()
+            .into_iter()
+            .map(|envelope| {
+                SerializedEnvelope::try_from(envelope)
+            })
+            .collect::<Result<Vec<SerializedEnvelope>, String>>()?;
 
         store
             .entry(aggregate.get_id().clone())
             .or_insert_with(|| Vec::new())
-            .append(&mut aggregate.drain_pending_events());
+            .append(&mut serialized_events);
 
         Ok(())
     }
 
-    async fn find(&self, id: &Uuid) -> Result<Vec<Envelope<A::Event>>, String> {
-        let store = self.events.read().map_err(|_| {
+    async fn find_all_events(&self, aggregate_id: &Uuid) -> Result<Vec<Envelope<A>>, String> {
+        let store = self.rows.read().map_err(|_| {
             String::from("Error happened while locking in-memory database for read. Try again.")
         })?;
 
-        match store.get(id) {
+        match store.get(aggregate_id) {
             Some(events) => {
                 if events.len() <= 0 {
-                    return Err(String::from("No events found"));
+                    return Err(String::from("No events found."));
                 }
 
-                Ok(events.clone())
+                Ok(
+                    events.clone().into_iter().map(|event| {
+                        Envelope::try_from(event)
+                    }).collect::<Result<Vec<Envelope<A>>, String>>()?
+                )
             }
-            None => Err(String::from("No entry found")),
+            None => Err(String::from("No entry found.")),
         }
     }
 }
 
 #[cfg(test)]
 mod test {
+    use uuid::Uuid;
+
     use crate::aggregate::*;
     use crate::event::*;
     use crate::repository::memory::*;
@@ -85,7 +95,7 @@ mod test {
         user.update(events[0].clone()).await;
         user.update(events[1].clone()).await;
 
-        let mut repository = MemoryRepository::<User>::new();
+        let mut repository = MemoryRepository::new();
         repository.save(&mut user).await.unwrap();
 
         assert_eq!(user.get_id(), id);
@@ -105,7 +115,7 @@ mod test {
         user.update(events[0].clone()).await;
         user.update(events[1].clone()).await;
 
-        let mut repository = MemoryRepository::<User>::new();
+        let mut repository = MemoryRepository::new();
         repository.save(&mut user).await.unwrap();
 
         assert_eq!(user.get_pending_events().len(), 0);
@@ -114,7 +124,7 @@ mod test {
     #[tokio::test]
     async fn repository_returns_ok_when_saving_aggregate_with_no_pending_events() {
         let mut user = User::default();
-        let mut repository = MemoryRepository::<User>::new();
+        let mut repository = MemoryRepository::new();
 
         assert_eq!(user.get_pending_events().len(), 0);
         let response = repository.save(&mut user).await;
@@ -135,14 +145,14 @@ mod test {
         user.update(events[0].clone()).await;
         user.update(events[1].clone()).await;
 
-        let mut repository = MemoryRepository::<User>::new();
+        let mut repository = MemoryRepository::new();
         repository.save(&mut user).await.unwrap();
 
-        let envelopes = repository.find(&id).await.unwrap();
+        let envelopes: Vec<Envelope<User>> = repository.find_all_events(&id).await.unwrap();
         assert_eq!(envelopes.len(), 2);
 
-        let event_1 = envelopes.get(0).unwrap().get_event();
-        let event_2 = envelopes.get(1).unwrap().get_event();
+        let event_1 = &envelopes.get(0).unwrap().event;
+        let event_2 = &envelopes.get(1).unwrap().event;
 
         assert_eq!(event_1.get_name(), "UserRegistered");
         assert_eq!(event_2.get_name(), "UserModified");

@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  es-mysql:
+    image: mysql:8
+    hostname: es-mysql
+    container_name: es-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: welcome
+    volumes:
+      - ./db/initialisation/mysql.sql:/docker-entrypoint-initdb.d/initialisation.sql
+    command:
+      - --character-set-client-handshake=0
+      - --sql_generate_invisible_primary_key=ON
