@@ -8,7 +8,7 @@ use crate::aggregate::*;
 use crate::envelope::Envelope;
 use crate::event::*;
 
-#[derive(Default, Serialize, Deserialize, Debug)]
+#[derive(Default, Serialize, Deserialize, Debug, PartialEq)]
 pub struct User {
     id: Uuid,
     sequence: u64,
