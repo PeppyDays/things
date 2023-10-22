@@ -1,29 +1,32 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use async_trait::async_trait;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use uuid::Uuid;
 
-use crate::event::{DomainEvent, Envelope};
+use crate::envelope::Envelope;
+use crate::event::DomainEvent;
 
 #[async_trait]
-pub trait EventSourced: Default + Sync + Send + Clone {
-    type Event: DomainEvent + Clone;
+pub trait EventSourced: Default + Serialize + DeserializeOwned + Send + Sync {
+    type Event: DomainEvent;
     type Error: std::error::Error;
 
     fn get_name() -> String;
 
     fn get_id(&self) -> Uuid;
 
-    fn get_sequence(&self) -> u32;
-    fn set_sequence(&mut self, seq: u32);
+    fn get_sequence(&self) -> u64;
+    fn set_sequence(&mut self, seq: u64);
     fn increase_sequence(&mut self) {
         self.set_sequence(self.get_sequence() + 1);
     }
 
-    fn get_pending_events(&self) -> &Vec<Envelope<Self::Event>>;
-    fn get_mut_pending_events(&mut self) -> &mut Vec<Envelope<Self::Event>>;
-    fn add_pending_event(&mut self, event: Envelope<Self::Event>);
-    fn drain_pending_events(&mut self) -> Vec<Envelope<Self::Event>> {
+    fn get_pending_events(&self) -> &Vec<Envelope<Self>>;
+    fn get_mut_pending_events(&mut self) -> &mut Vec<Envelope<Self>>;
+    fn add_pending_event(&mut self, event: Envelope<Self>);
+    fn drain_pending_events(&mut self) -> Vec<Envelope<Self>> {
         self.get_mut_pending_events().drain(..).collect()
     }
 
@@ -33,26 +36,20 @@ pub trait EventSourced: Default + Sync + Send + Clone {
         self.increase_sequence();
         self.apply(event.clone()).await;
         let pending_event = Envelope::new(
-            Self::get_name(),
             self.get_id(),
             self.get_sequence(),
-            Arc::new(event),
+            event,
             HashMap::new(),
         );
         self.add_pending_event(pending_event);
     }
 
-    async fn load(events: &Vec<Envelope<Self::Event>>) -> Self {
-        // async is not permitted inside anonymous block for now ..
-        // events.iter().fold(Self::default(), |mut aggregate, event| {
-        //     aggregate.apply(event.get_event().clone()).await;
-        //     aggregate.set_sequence(event.aggregate_sequence);
-        //     aggregate
-        // })
+    async fn load(enveloped_events: Vec<Envelope<Self>>) -> Self {
+        // async is not permitted inside anonymous block for now, so fold cannot be used
         let mut aggregate = Self::default();
-        for event in events {
-            aggregate.apply(event.get_event().clone()).await;
-            aggregate.set_sequence(event.get_aggregate_sequence());
+        for enveloped_event in enveloped_events {
+            aggregate.apply(enveloped_event.event).await;
+            aggregate.set_sequence(enveloped_event.aggregate_sequence);
         }
         aggregate
     }
@@ -61,7 +58,6 @@ pub trait EventSourced: Default + Sync + Send + Clone {
 #[cfg(test)]
 mod tests {
     use crate::aggregate::*;
-    use crate::event::*;
     use crate::test::*;
 
     #[tokio::test]
@@ -83,7 +79,7 @@ mod tests {
             user.get_pending_events()
                 .first()
                 .unwrap()
-                .get_event()
+                .event
                 .get_name(),
             "UserRegistered"
         );
@@ -113,25 +109,23 @@ mod tests {
     async fn aggregate_can_be_loaded_from_events() {
         let id = Uuid::new_v4();
         let events = vec![
-            Envelope::new(
-                User::get_name(),
+            Envelope::<User>::new(
                 id,
                 1,
-                Arc::new(UserEvent::UserRegistered { id }),
+                UserEvent::UserRegistered { id },
                 HashMap::new(),
             ),
-            Envelope::new(
-                User::get_name(),
+            Envelope::<User>::new(
                 id,
                 2,
-                Arc::new(UserEvent::UserModified {
+                UserEvent::UserModified {
                     name: String::from("Arine"),
-                }),
+                },
                 HashMap::new(),
             ),
         ];
 
-        let user = User::load(&events).await;
+        let user = User::load(events).await;
 
         assert_eq!(user.get_id(), id);
         assert_eq!(user.get_sequence(), 2);

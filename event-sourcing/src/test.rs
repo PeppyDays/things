@@ -5,14 +5,15 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::aggregate::*;
+use crate::envelope::Envelope;
 use crate::event::*;
 
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Serialize, Deserialize, Debug)]
 pub struct User {
     id: Uuid,
-    sequence: u32,
+    sequence: u64,
     name: String,
-    pending_events: Vec<Envelope<<User as EventSourced>::Event>>,
+    pending_events: Vec<Envelope<Self>>,
 }
 
 #[async_trait]
@@ -26,21 +27,22 @@ impl EventSourced for User {
     fn get_id(&self) -> Uuid {
         self.id
     }
-    fn get_sequence(&self) -> u32 {
+    fn get_sequence(&self) -> u64 {
         self.sequence
     }
-    fn set_sequence(&mut self, seq: u32) {
+    fn set_sequence(&mut self, seq: u64) {
         self.sequence = seq
     }
-    fn get_pending_events(&self) -> &Vec<Envelope<Self::Event>> {
+    fn get_pending_events(&self) -> &Vec<Envelope<Self>> {
         &self.pending_events
     }
-    fn get_mut_pending_events(&mut self) -> &mut Vec<Envelope<Self::Event>> {
+    fn get_mut_pending_events(&mut self) -> &mut Vec<Envelope<Self>> {
         &mut self.pending_events
     }
-    fn add_pending_event(&mut self, event: Envelope<Self::Event>) {
+    fn add_pending_event(&mut self, event: Envelope<Self>) {
         self.pending_events.push(event)
     }
+
     async fn apply(&mut self, event: Self::Event) {
         match event {
             UserEvent::UserRegistered { id } => {
@@ -64,7 +66,7 @@ impl Display for UserError {
 
 impl std::error::Error for UserError {}
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum UserEvent {
     UserRegistered { id: Uuid },
     UserModified { name: String },
@@ -81,27 +83,6 @@ impl DomainEvent for UserEvent {
         match self {
             UserEvent::UserRegistered { .. } => String::from("1.0.0"),
             UserEvent::UserModified { .. } => String::from("1.0.0"),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum OrderEvent {
-    OrderPlaced { id: Uuid },
-    OrderCompleted,
-}
-
-impl DomainEvent for OrderEvent {
-    fn get_name(&self) -> String {
-        match self {
-            OrderEvent::OrderPlaced { .. } => String::from("OrderPlaced"),
-            OrderEvent::OrderCompleted => String::from("OrderCompleted"),
-        }
-    }
-    fn get_version(&self) -> String {
-        match self {
-            OrderEvent::OrderPlaced { .. } => String::from("1.0.0"),
-            OrderEvent::OrderCompleted => String::from("1.0.0"),
         }
     }
 }
