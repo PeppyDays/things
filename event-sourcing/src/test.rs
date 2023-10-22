@@ -11,7 +11,7 @@ use crate::event::*;
 #[derive(Default, Serialize, Deserialize, Debug, PartialEq)]
 pub struct User {
     id: Uuid,
-    sequence: u64,
+    sequence: i64,
     name: String,
     pending_events: Vec<Envelope<Self>>,
 }
@@ -27,10 +27,10 @@ impl EventSourced for User {
     fn get_id(&self) -> Uuid {
         self.id
     }
-    fn get_sequence(&self) -> u64 {
+    fn get_sequence(&self) -> i64 {
         self.sequence
     }
-    fn set_sequence(&mut self, seq: u64) {
+    fn set_sequence(&mut self, seq: i64) {
         self.sequence = seq
     }
     fn get_pending_events(&self) -> &Vec<Envelope<Self>> {
