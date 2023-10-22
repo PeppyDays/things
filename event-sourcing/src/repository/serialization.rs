@@ -11,7 +11,7 @@ pub struct SerializedEnvelope {
     pub id: Uuid,
     pub aggregate_name: String,
     pub aggregate_id: Uuid,
-    pub aggregate_sequence: u64,
+    pub aggregate_sequence: i64,
     pub event_name: String,
     pub event_version: String,
     pub event_payload: Value,

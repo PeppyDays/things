@@ -17,8 +17,8 @@ pub trait EventSourced: Default + Serialize + DeserializeOwned + Send + Sync {
 
     fn get_id(&self) -> Uuid;
 
-    fn get_sequence(&self) -> u64;
-    fn set_sequence(&mut self, seq: u64);
+    fn get_sequence(&self) -> i64;
+    fn set_sequence(&mut self, seq: i64);
     fn increase_sequence(&mut self) {
         self.set_sequence(self.get_sequence() + 1);
     }

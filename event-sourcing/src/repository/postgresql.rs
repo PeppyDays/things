@@ -1,6 +1,6 @@
 use async_trait::async_trait;
-use sqlx::mysql::MySqlRow;
-use sqlx::{MySql, Pool, Row};
+use sqlx::postgres::PgRow;
+use sqlx::{Pool, Postgres, Row};
 use uuid::Uuid;
 
 use crate::aggregate::EventSourced;
@@ -11,20 +11,20 @@ use crate::repository::serialization::SerializedEnvelope;
 const DEFAULT_EVENT_TABLE: &str = "events";
 
 #[derive(Debug)]
-pub struct MySqlRepository {
-    pool: Pool<MySql>,
+pub struct PostgresRepository {
+    pool: Pool<Postgres>,
 }
 
-impl MySqlRepository {
-    pub fn new(pool: Pool<MySql>) -> Self {
+impl PostgresRepository {
+    pub fn new(pool: Pool<Postgres>) -> Self {
         Self { pool }
     }
 }
 
 #[async_trait]
-impl<A: EventSourced> Repository<A> for MySqlRepository {
+impl<A: EventSourced> Repository<A> for PostgresRepository {
     async fn save(&mut self, aggregate: &mut A) -> Result<(), String> {
-        let query = format!("INSERT INTO {DEFAULT_EVENT_TABLE} (id, aggregate_name, aggregate_id, aggregate_sequence, event_name, event_version, event_payload, metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        let query = format!("INSERT INTO {DEFAULT_EVENT_TABLE} (id, aggregate_name, aggregate_id, aggregate_sequence, event_name, event_version, event_payload, metadata) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)");
 
         let events = aggregate
             .drain_pending_events()
@@ -60,12 +60,12 @@ impl<A: EventSourced> Repository<A> for MySqlRepository {
     }
 
     async fn find_all_events(&self, aggregate_id: &Uuid) -> Result<Vec<Envelope<A>>, String> {
-        let query = format!("SELECT id, aggregate_name, aggregate_id, aggregate_sequence, event_name, event_version, event_payload, metadata FROM {DEFAULT_EVENT_TABLE} WHERE aggregate_name = ? AND aggregate_id = ? ORDER BY aggregate_sequence ASC");
+        let query = format!("SELECT id, aggregate_name, aggregate_id, aggregate_sequence, event_name, event_version, event_payload, metadata FROM {DEFAULT_EVENT_TABLE} WHERE aggregate_name = $1 AND aggregate_id = $2 ORDER BY aggregate_sequence ASC");
 
         sqlx::query(&query)
             .bind(A::get_name())
             .bind(aggregate_id)
-            .map(|row: MySqlRow| SerializedEnvelope {
+            .map(|row: PgRow| SerializedEnvelope {
                 id: row.get("id"),
                 aggregate_name: row.get("aggregate_name"),
                 aggregate_id: row.get("aggregate_id"),
@@ -91,12 +91,12 @@ mod tests {
     use uuid::Uuid;
 
     use crate::aggregate::*;
-    use crate::repository::mysql::*;
+    use crate::repository::postgresql::*;
     use crate::test::*;
 
     #[tokio::test]
     #[ignore]
-    async fn mysql_repository_can_save_domain_events() {
+    async fn postgresql_repository_can_save_domain_events() {
         let mut user = User::default();
         let aggregate_id = Uuid::new_v4();
         let events = vec![
@@ -108,8 +108,8 @@ mod tests {
         user.update(events[0].clone()).await;
         user.update(events[1].clone()).await;
 
-        let mut repository = MySqlRepository::new(
-            sqlx::Pool::connect("mysql://root:welcome@localhost:3306/es")
+        let mut repository = PostgresRepository::new(
+            sqlx::Pool::connect("postgresql://postgres:welcome@localhost:5432/es")
                 .await
                 .unwrap(),
         );
@@ -118,7 +118,7 @@ mod tests {
 
     #[tokio::test]
     #[ignore]
-    async fn mysql_repository_can_save_and_find_all_domain_events() {
+    async fn postgresql_repository_can_save_and_find_all_domain_events() {
         let mut user = User::default();
         let aggregate_id = Uuid::new_v4();
         let events = vec![
@@ -130,8 +130,8 @@ mod tests {
         user.update(events[0].clone()).await;
         user.update(events[1].clone()).await;
 
-        let mut repository = MySqlRepository::new(
-            sqlx::Pool::connect("mysql://root:welcome@localhost:3306/es")
+        let mut repository = PostgresRepository::new(
+            sqlx::Pool::connect("postgresql://postgres:welcome@localhost:5432/es")
                 .await
                 .unwrap(),
         );

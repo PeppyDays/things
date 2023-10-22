@@ -9,7 +9,7 @@ use crate::aggregate::EventSourced;
 pub struct Envelope<A: EventSourced> {
     pub id: Uuid,
     pub aggregate_id: Uuid,
-    pub aggregate_sequence: u64,
+    pub aggregate_sequence: i64,
     pub event: A::Event,
     pub metadata: HashMap<String, String>,
 }
@@ -17,7 +17,7 @@ pub struct Envelope<A: EventSourced> {
 impl<A: EventSourced> Envelope<A> {
     pub fn new(
         aggregate_id: Uuid,
-        aggregate_sequence: u64,
+        aggregate_sequence: i64,
         event: A::Event,
         metadata: HashMap<String, String>,
     ) -> Self {
