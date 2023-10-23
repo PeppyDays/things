@@ -8,12 +8,12 @@ use uuid::Uuid;
 
 use crate::aggregate::EventSourced;
 use crate::envelope::Envelope;
+use crate::repository::error::Error;
 use crate::repository::interface::Repository;
 use crate::repository::serialization::SerializedEnvelope;
 
 #[derive(Debug)]
-pub struct MemoryRepository
-{
+pub struct MemoryRepository {
     rows: Arc<RwLock<HashMap<Uuid, Vec<SerializedEnvelope>>>>,
 }
 
@@ -27,21 +27,17 @@ impl MemoryRepository {
 
 #[async_trait]
 impl<A> Repository<A> for MemoryRepository
-    where
-        A: EventSourced,
+where
+    A: EventSourced,
 {
-    async fn save(&mut self, aggregate: &mut A) -> Result<(), String> {
-        let mut store = self.rows.write().map_err(|_| {
-            String::from("Error happened while locking in-memory database for write. Try again.")
-        })?;
+    async fn save(&mut self, aggregate: &mut A) -> Result<(), Error> {
+        let mut store = self.rows.write().map_err(|_| Error::Unknown)?;
 
         let mut serialized_events = aggregate
             .drain_pending_events()
             .into_iter()
-            .map(|envelope| {
-                SerializedEnvelope::try_from(envelope)
-            })
-            .collect::<Result<Vec<SerializedEnvelope>, String>>()?;
+            .map(|envelope| SerializedEnvelope::try_from(envelope).map_err(|_| Error::Unknown))
+            .collect::<Result<Vec<SerializedEnvelope>, Error>>()?;
 
         store
             .entry(aggregate.get_id().clone())
@@ -51,24 +47,22 @@ impl<A> Repository<A> for MemoryRepository
         Ok(())
     }
 
-    async fn find_all_events(&self, aggregate_id: &Uuid) -> Result<Vec<Envelope<A>>, String> {
-        let store = self.rows.read().map_err(|_| {
-            String::from("Error happened while locking in-memory database for read. Try again.")
-        })?;
+    async fn find_all_events(&self, aggregate_id: &Uuid) -> Result<Vec<Envelope<A>>, Error> {
+        let store = self.rows.read().map_err(|_| Error::Unknown)?;
 
         match store.get(aggregate_id) {
             Some(events) => {
                 if events.len() <= 0 {
-                    return Err(String::from("No events found."));
+                    return Err(Error::Unknown);
                 }
 
-                Ok(
-                    events.clone().into_iter().map(|event| {
-                        Envelope::try_from(event)
-                    }).collect::<Result<Vec<Envelope<A>>, String>>()?
-                )
+                Ok(events
+                    .clone()
+                    .into_iter()
+                    .map(|event| Envelope::try_from(event).map_err(|_| Error::Unknown))
+                    .collect::<Result<Vec<Envelope<A>>, Error>>()?)
             }
-            None => Err(String::from("No entry found.")),
+            None => Err(Error::Unknown),
         }
     }
 }

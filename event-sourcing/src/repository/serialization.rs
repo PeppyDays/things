@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::aggregate::EventSourced;
 use crate::envelope::Envelope;
 use crate::event::DomainEvent;
+use crate::repository::error::Error;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct SerializedEnvelope {
@@ -19,10 +20,10 @@ pub struct SerializedEnvelope {
 }
 
 impl<A> TryFrom<Envelope<A>> for SerializedEnvelope
-    where
-        A: EventSourced,
+where
+    A: EventSourced,
 {
-    type Error = String;
+    type Error = Error;
 
     fn try_from(envelope: Envelope<A>) -> Result<Self, Self::Error> {
         Ok(Self {
@@ -32,25 +33,29 @@ impl<A> TryFrom<Envelope<A>> for SerializedEnvelope
             aggregate_sequence: envelope.aggregate_sequence,
             event_name: envelope.event.get_name(),
             event_version: envelope.event.get_version(),
-            event_payload: serde_json::to_value(&envelope.event).map_err(|e| e.to_string())?,
-            metadata: serde_json::to_value(&envelope.metadata).map_err(|e| e.to_string())?,
+            event_payload: serde_json::to_value(&envelope.event)
+                .map_err(|error| Error::Serialization(Box::new(error)))?,
+            metadata: serde_json::to_value(&envelope.metadata)
+                .map_err(|error| Error::Serialization(Box::new(error)))?,
         })
     }
 }
 
 impl<A> TryFrom<SerializedEnvelope> for Envelope<A>
-    where
-        A: EventSourced,
+where
+    A: EventSourced,
 {
-    type Error = String;
+    type Error = Error;
 
     fn try_from(event: SerializedEnvelope) -> Result<Self, Self::Error> {
         Ok(Self {
             id: event.id,
             aggregate_id: event.aggregate_id,
             aggregate_sequence: event.aggregate_sequence,
-            event: serde_json::from_value(event.event_payload).map_err(|e| e.to_string())?,
-            metadata: serde_json::from_value(event.metadata).map_err(|e| e.to_string())?,
+            event: serde_json::from_value(event.event_payload)
+                .map_err(|error| Error::Deserialization(Box::new(error)))?,
+            metadata: serde_json::from_value(event.metadata)
+                .map_err(|error| Error::Deserialization(Box::new(error)))?,
         })
     }
 }
@@ -65,12 +70,7 @@ mod tests {
     #[test]
     fn envelope_can_be_serialized() {
         let event = UserEvent::UserRegistered { id: Uuid::new_v4() };
-        let envelope = Envelope::<User>::new(
-            Uuid::new_v4(),
-            1,
-            event.clone(),
-            HashMap::new(),
-        );
+        let envelope = Envelope::<User>::new(Uuid::new_v4(), 1, event.clone(), HashMap::new());
 
         let serialized = SerializedEnvelope::try_from(envelope).unwrap();
 
@@ -84,18 +84,16 @@ mod tests {
         let aggregate_id = Uuid::new_v4();
 
         let event = UserEvent::UserRegistered { id: event_id };
-        let envelope = Envelope::<User>::new(
-            aggregate_id,
-            1,
-            event.clone(),
-            HashMap::new(),
-        );
+        let envelope = Envelope::<User>::new(aggregate_id, 1, event.clone(), HashMap::new());
 
         let serialized = SerializedEnvelope::try_from(envelope).unwrap();
         let deserialized = Envelope::<User>::try_from(serialized).unwrap();
 
         assert_eq!(deserialized.aggregate_id, aggregate_id);
         assert_eq!(deserialized.aggregate_sequence, 1);
-        assert_eq!(deserialized.event, UserEvent::UserRegistered { id: event_id });
+        assert_eq!(
+            deserialized.event,
+            UserEvent::UserRegistered { id: event_id }
+        );
     }
 }
