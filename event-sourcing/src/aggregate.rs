@@ -35,12 +35,8 @@ pub trait EventSourced: Default + Serialize + DeserializeOwned + Send + Sync {
     async fn update(&mut self, event: Self::Event) {
         self.increase_sequence();
         self.apply(event.clone()).await;
-        let pending_event = Envelope::new(
-            self.get_id(),
-            self.get_sequence(),
-            event,
-            HashMap::new(),
-        );
+        let pending_event =
+            Envelope::new(self.get_id(), self.get_sequence(), event, HashMap::new());
         self.add_pending_event(pending_event);
     }
 
@@ -76,11 +72,7 @@ mod tests {
 
         assert_eq!(user.get_pending_events().len(), 1);
         assert_eq!(
-            user.get_pending_events()
-                .first()
-                .unwrap()
-                .event
-                .get_name(),
+            user.get_pending_events().first().unwrap().event.get_name(),
             "UserRegistered"
         );
     }
@@ -109,12 +101,7 @@ mod tests {
     async fn aggregate_can_be_loaded_from_events() {
         let id = Uuid::new_v4();
         let events = vec![
-            Envelope::<User>::new(
-                id,
-                1,
-                UserEvent::UserRegistered { id },
-                HashMap::new(),
-            ),
+            Envelope::<User>::new(id, 1, UserEvent::UserRegistered { id }, HashMap::new()),
             Envelope::<User>::new(
                 id,
                 2,

@@ -1,5 +1,4 @@
-CREATE TABLE events
-(
+CREATE TABLE events (
     id                 UUID        NOT NULL,
     aggregate_name     VARCHAR(50) NOT NULL,
     aggregate_id       UUID        NOT NULL,

@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use crate::aggregate::EventSourced;
 use crate::envelope::Envelope;
+use crate::repository::error::Error;
 use crate::repository::interface::Repository;
 use crate::repository::serialization::SerializedEnvelope;
 
@@ -23,18 +24,21 @@ impl PostgresRepository {
 
 #[async_trait]
 impl<A: EventSourced> Repository<A> for PostgresRepository {
-    async fn save(&mut self, aggregate: &mut A) -> Result<(), String> {
+    async fn save(&mut self, aggregate: &mut A) -> Result<(), Error> {
         let query = format!("INSERT INTO {DEFAULT_EVENT_TABLE} (id, aggregate_name, aggregate_id, aggregate_sequence, event_name, event_version, event_payload, metadata) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)");
 
         let events = aggregate
             .drain_pending_events()
             .into_iter()
-            .map(|envelope| SerializedEnvelope::try_from(envelope))
-            .collect::<Result<Vec<SerializedEnvelope>, String>>()?;
+            .map(|envelope| {
+                SerializedEnvelope::try_from(envelope)
+                    .map_err(|error| Error::Serialization(Box::new(error)))
+            })
+            .collect::<Result<Vec<SerializedEnvelope>, Error>>()?;
 
-        let mut tx = sqlx::Acquire::begin(&self.pool).await.map_err(|_| {
-            String::from("Error happened while acquiring connection from pool. Try again.")
-        })?;
+        let mut tx = sqlx::Acquire::begin(&self.pool)
+            .await
+            .map_err(|error| Error::Transaction(Box::new(error)))?;
 
         for event in events {
             sqlx::query(&query)
@@ -48,18 +52,17 @@ impl<A: EventSourced> Repository<A> for PostgresRepository {
                 .bind(event.metadata)
                 .execute(&mut *tx)
                 .await
-                .map_err(|_| {
-                    String::from("Error happened while inserting pending events. Try again.")
-                })?;
+                .map_err(|error| Error::Execution(Box::new(error)))?;
         }
 
         tx.commit()
             .await
-            .map_err(|_| String::from("Error happened while committing transaction. Try again."))?;
+            .map_err(|error| Error::Transaction(Box::new(error)))?;
+
         Ok(())
     }
 
-    async fn find_all_events(&self, aggregate_id: &Uuid) -> Result<Vec<Envelope<A>>, String> {
+    async fn find_all_events(&self, aggregate_id: &Uuid) -> Result<Vec<Envelope<A>>, Error> {
         let query = format!("SELECT id, aggregate_name, aggregate_id, aggregate_sequence, event_name, event_version, event_payload, metadata FROM {DEFAULT_EVENT_TABLE} WHERE aggregate_name = $1 AND aggregate_id = $2 ORDER BY aggregate_sequence ASC");
 
         sqlx::query(&query)
@@ -77,22 +80,23 @@ impl<A: EventSourced> Repository<A> for PostgresRepository {
             })
             .fetch_all(&self.pool)
             .await
-            .map_err(|_| {
-                String::from("Error happened while fetching events from database. Try again.")
-            })?
+            .map_err(|error| Error::Execution(Box::new(error)))?
             .into_iter()
-            .map(|event| Envelope::<A>::try_from(event))
-            .collect::<Result<Vec<Envelope<A>>, String>>()
+            .map(|event| {
+                Envelope::<A>::try_from(event)
+                    .map_err(|error| Error::Deserialization(Box::new(error)))
+            })
+            .collect::<Result<Vec<Envelope<A>>, Error>>()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use uuid::Uuid;
 
     use crate::aggregate::*;
     use crate::repository::postgresql::*;
     use crate::test::*;
+    use uuid::Uuid;
 
     #[tokio::test]
     #[ignore]

@@ -3,7 +3,9 @@ use std::fmt::Debug;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-pub trait DomainEvent: Debug + Serialize + DeserializeOwned + Clone + PartialEq + Sync + Send {
+pub trait DomainEvent:
+    Debug + Serialize + DeserializeOwned + Clone + PartialEq + Sync + Send
+{
     fn get_name(&self) -> String;
     fn get_version(&self) -> String;
 }
@@ -22,12 +24,7 @@ mod tests {
     fn event_can_be_enveloped() {
         let event = UserEvent::UserRegistered { id: Uuid::new_v4() };
 
-        let envelope = Envelope::<User>::new(
-            Uuid::new_v4(),
-            1,
-            event.clone(),
-            HashMap::new(),
-        );
+        let envelope = Envelope::<User>::new(Uuid::new_v4(), 1, event.clone(), HashMap::new());
 
         assert_eq!(envelope.event, event);
     }

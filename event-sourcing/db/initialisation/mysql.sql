@@ -2,8 +2,7 @@ CREATE SCHEMA es;
 
 USE es;
 
-CREATE TABLE events
-(
+CREATE TABLE events (
     id                 VARBINARY(16) NOT NULL,
     aggregate_name     VARCHAR(50)   NOT NULL,
     aggregate_id       VARBINARY(16) NOT NULL,
