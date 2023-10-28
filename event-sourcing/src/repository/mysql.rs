@@ -1,6 +1,6 @@
 use async_trait::async_trait;
-use sqlx::mysql::MySqlRow;
 use sqlx::{MySql, Pool, Row};
+use sqlx::mysql::MySqlRow;
 use uuid::Uuid;
 
 use crate::aggregate::EventSourced;
@@ -11,7 +11,7 @@ use crate::repository::serialization::SerializedEnvelope;
 
 const DEFAULT_EVENT_TABLE: &str = "events";
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MySqlRepository {
     pool: Pool<MySql>,
 }

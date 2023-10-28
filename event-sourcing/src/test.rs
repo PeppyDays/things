@@ -42,17 +42,6 @@ impl EventSourced for User {
     fn add_pending_event(&mut self, event: Envelope<Self>) {
         self.pending_events.push(event)
     }
-
-    async fn apply(&mut self, event: Self::Event) {
-        match event {
-            UserEvent::UserRegistered { id } => {
-                self.id = id;
-            }
-            UserEvent::UserModified { name } => {
-                self.name = name;
-            }
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -83,6 +72,20 @@ impl DomainEvent for UserEvent {
         match self {
             UserEvent::UserRegistered { .. } => String::from("1.0.0"),
             UserEvent::UserModified { .. } => String::from("1.0.0"),
+        }
+    }
+}
+
+#[async_trait]
+impl EventApplier<User> for User {
+    async fn apply(&mut self, event: UserEvent) {
+        match event {
+            UserEvent::UserRegistered { id } => {
+                self.id = id;
+            }
+            UserEvent::UserModified { name } => {
+                self.name = name;
+            }
         }
     }
 }

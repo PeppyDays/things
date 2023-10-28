@@ -9,7 +9,7 @@ use crate::envelope::Envelope;
 use crate::event::DomainEvent;
 
 #[async_trait]
-pub trait EventSourced: Default + Serialize + DeserializeOwned + Send + Sync {
+pub trait EventSourced: Default + Serialize + DeserializeOwned + Send + Sync + EventApplier<Self> {
     type Event: DomainEvent;
     type Error: std::error::Error;
 
@@ -30,8 +30,6 @@ pub trait EventSourced: Default + Serialize + DeserializeOwned + Send + Sync {
         self.get_mut_pending_events().drain(..).collect()
     }
 
-    async fn apply(&mut self, event: Self::Event);
-
     async fn update(&mut self, event: Self::Event) {
         self.increase_sequence();
         self.apply(event.clone()).await;
@@ -49,6 +47,11 @@ pub trait EventSourced: Default + Serialize + DeserializeOwned + Send + Sync {
         }
         aggregate
     }
+}
+
+#[async_trait]
+pub trait EventApplier<A: EventSourced> {
+    async fn apply(&mut self, event: A::Event);
 }
 
 #[cfg(test)]

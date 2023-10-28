@@ -12,7 +12,7 @@ use crate::repository::error::Error;
 use crate::repository::interface::Repository;
 use crate::repository::serialization::SerializedEnvelope;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MemoryRepository {
     rows: Arc<RwLock<HashMap<Uuid, Vec<SerializedEnvelope>>>>,
 }
@@ -27,8 +27,8 @@ impl MemoryRepository {
 
 #[async_trait]
 impl<A> Repository<A> for MemoryRepository
-where
-    A: EventSourced,
+    where
+        A: EventSourced,
 {
     async fn save(&mut self, aggregate: &mut A) -> Result<(), Error> {
         let mut store = self.rows.write().map_err(|_| Error::Unknown)?;
