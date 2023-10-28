@@ -15,6 +15,6 @@ pub enum Error {
     #[error("{0}")]
     Execution(Box<dyn std::error::Error + Send + Sync + 'static>),
 
-    #[error("Unknown repository error.")]
+    #[error("Unknown repository error")]
     Unknown,
 }

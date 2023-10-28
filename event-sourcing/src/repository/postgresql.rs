@@ -1,6 +1,6 @@
 use async_trait::async_trait;
-use sqlx::postgres::PgRow;
 use sqlx::{Pool, Postgres, Row};
+use sqlx::postgres::PgRow;
 use uuid::Uuid;
 
 use crate::aggregate::EventSourced;
@@ -11,7 +11,7 @@ use crate::repository::serialization::SerializedEnvelope;
 
 const DEFAULT_EVENT_TABLE: &str = "events";
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PostgresRepository {
     pool: Pool<Postgres>,
 }
@@ -92,11 +92,11 @@ impl<A: EventSourced> Repository<A> for PostgresRepository {
 
 #[cfg(test)]
 mod tests {
+    use uuid::Uuid;
 
     use crate::aggregate::*;
     use crate::repository::postgresql::*;
     use crate::test::*;
-    use uuid::Uuid;
 
     #[tokio::test]
     #[ignore]
