@@ -1,13 +1,42 @@
-pub struct Config {
-    pub port: u16,
+use domain::user::{
+    commands::CommandExecutor as UserCommandExecutor, queries::QueryReader as UserQueryReader,
+};
+use event_sourcing::repository::mysql::MySqlRepository;
+use sqlx::mysql::MySqlPoolOptions;
+
+#[derive(Clone)]
+pub struct Container {
+    pub user_command_executor: UserCommandExecutor<MySqlRepository>,
+    pub user_query_reader: UserQueryReader<MySqlRepository>,
 }
 
-impl Config {
-    pub fn new() -> Self {
-        Self { port: 8080 }
+impl Container {
+    pub async fn new() -> Self {
+        let command_repository = MySqlRepository::new(
+            MySqlPoolOptions::new()
+                .max_connections(5)
+                .connect("mysql://root:welcome@localhost:3306/account")
+                .await
+                .unwrap(),
+        );
+        let user_command_executor = UserCommandExecutor::new(command_repository.clone());
+
+        let query_repository = MySqlRepository::new(
+            MySqlPoolOptions::new()
+                .max_connections(5)
+                .connect("mysql://root:welcome@localhost:3306/account")
+                .await
+                .unwrap(),
+        );
+        let user_query_reader = UserQueryReader::new(query_repository.clone());
+
+        Self {
+            user_command_executor,
+            user_query_reader,
+        }
     }
 }
 
-pub async fn get_config() -> Config {
-    Config::new()
+pub async fn get_container() -> Container {
+    Container::new().await
 }

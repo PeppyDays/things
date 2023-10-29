@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use event_sourcing::aggregate::EventSourced;
 use event_sourcing::envelope::Envelope;
 use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 use uuid::Uuid;
 
 use crate::user::errors::Error;
@@ -9,12 +10,31 @@ use crate::user::events::Event;
 
 #[derive(Default, Serialize, Deserialize, Debug, PartialEq)]
 pub struct User {
-    id: Uuid,
+    pub id: Uuid,
+    pub password: String,
+    pub name: String,
+    pub email: String,
+    pub language: String,
+    pub role: Role,
+    pub status: Status,
     sequence: i64,
-    name: String,
-    age: u8,
-    status: Status,
     pending_events: Vec<Envelope<Self>>,
+}
+
+#[derive(Default, Serialize, Deserialize, Debug, PartialEq)]
+pub enum Role {
+    #[default]
+    Member,
+    Administrator,
+}
+
+impl Display for Role {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Role::Member => write!(f, "Member"),
+            Role::Administrator => write!(f, "Administrator"),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Default)]
@@ -23,6 +43,16 @@ pub enum Status {
     Registered,
     Active,
     Withdrawn,
+}
+
+impl Display for Status {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Status::Registered => write!(f, "Registered"),
+            Status::Active => write!(f, "Active"),
+            Status::Withdrawn => write!(f, "Withdrawn"),
+        }
+    }
 }
 
 #[async_trait]
@@ -51,44 +81,29 @@ impl EventSourced for User {
     fn add_pending_event(&mut self, event: Envelope<Self>) {
         self.pending_events.push(event)
     }
-
-    async fn apply(&mut self, event: Self::Event) {
-        match event {
-            Event::UserRegistered { id } => {
-                self.id = id;
-                self.status = Status::Active;
-            }
-            Event::UserModified { name, age } => {
-                self.name = name;
-                self.age = age;
-            }
-            Event::UserWithdrawn => {
-                self.status = Status::Withdrawn;
-            }
-        }
-    }
 }
 
 impl User {
-    pub async fn register(&mut self, id: Uuid) -> Result<(), Error> {
-        let event = Event::UserRegistered { id };
+    pub async fn register(
+        &mut self,
+        id: Uuid,
+        name: String,
+        password: String,
+        email: String,
+        language: String,
+    ) -> Result<(), Error> {
+        let event = Event::UserRegistered {
+            id,
+            name,
+            password,
+            email,
+            language,
+        };
         self.update(event).await;
         Ok(())
     }
 
-    pub async fn modify(&mut self, name: String, age: u8) -> Result<(), Error> {
-        let event = Event::UserModified { name, age };
-        self.update(event).await;
-        Ok(())
-    }
-
-    pub async fn withdraw(&mut self) -> Result<(), Error> {
-        if self.status == Status::Withdrawn {
-            return Err(Error::AlreadyRegistered { id: self.id });
-        }
-
-        let event = Event::UserWithdrawn;
-        self.update(event).await;
-        Ok(())
+    pub fn is_withdrawn(&self) -> bool {
+        self.status == Status::Withdrawn
     }
 }
