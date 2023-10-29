@@ -1,9 +1,18 @@
-use axum::{http::StatusCode, response::IntoResponse, routing::get, Router};
+use axum::routing::{get, post};
+use axum::Router;
 
-pub fn create_router() -> Router {
-    Router::new().route("/", get(check_health))
-}
+use crate::container::Container;
+use crate::handlers::check_health::check_health;
+use crate::handlers::get_user::get_user;
+use crate::handlers::sign_up::sign_up_with_credential;
 
-async fn check_health() -> impl IntoResponse {
-    StatusCode::OK
+pub fn create_router(container: Container) -> Router {
+    Router::new()
+        .route("/account/user/get-user/:id", get(get_user))
+        .route(
+            "/account/user/sign-up-with-credential",
+            post(sign_up_with_credential),
+        )
+        .with_state(container)
+        .route("/account/user/check-health", get(check_health))
 }
