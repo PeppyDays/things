@@ -27,8 +27,8 @@ impl MemoryRepository {
 
 #[async_trait]
 impl<A> Repository<A> for MemoryRepository
-    where
-        A: EventSourced,
+where
+    A: EventSourced,
 {
     async fn save(&mut self, aggregate: &mut A) -> Result<(), Error> {
         let mut store = self.rows.write().map_err(|_| Error::Unknown)?;
@@ -51,18 +51,12 @@ impl<A> Repository<A> for MemoryRepository
         let store = self.rows.read().map_err(|_| Error::Unknown)?;
 
         match store.get(aggregate_id) {
-            Some(events) => {
-                if events.len() <= 0 {
-                    return Err(Error::Unknown);
-                }
-
-                Ok(events
-                    .clone()
-                    .into_iter()
-                    .map(|event| Envelope::try_from(event).map_err(|_| Error::Unknown))
-                    .collect::<Result<Vec<Envelope<A>>, Error>>()?)
-            }
-            None => Err(Error::Unknown),
+            Some(events) => Ok(events
+                .clone()
+                .into_iter()
+                .map(|event| Envelope::try_from(event).map_err(|_| Error::Unknown))
+                .collect::<Result<Vec<Envelope<A>>, Error>>()?),
+            None => Ok(vec![]),
         }
     }
 }
@@ -94,6 +88,16 @@ mod test {
 
         assert_eq!(user.get_id(), id);
         assert_eq!(user.get_sequence(), 2);
+    }
+
+    #[tokio::test]
+    async fn repository_returns_empty_vector_when_events_not_exist() {
+        let id = Uuid::default();
+        let repository = MemoryRepository::new();
+
+        let events: Vec<Envelope<User>> = repository.find_all_events(&id).await.unwrap();
+
+        assert!(events.is_empty())
     }
 
     #[tokio::test]
