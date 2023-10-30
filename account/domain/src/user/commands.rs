@@ -82,7 +82,7 @@ mod tests {
     use crate::user::events::*;
 
     #[tokio::test]
-    async fn register_user_command_generates_user_generated_event() {
+    async fn register_user_command_generates_user_registered_event() {
         let repository = MemoryRepository::new();
         let mut command_executor = CommandExecutor::new(repository.clone());
 

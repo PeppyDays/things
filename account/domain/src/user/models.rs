@@ -28,15 +28,6 @@ pub enum Role {
     Administrator,
 }
 
-impl Display for Role {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Role::Member => write!(f, "Member"),
-            Role::Administrator => write!(f, "Administrator"),
-        }
-    }
-}
-
 #[derive(Debug, PartialEq, Serialize, Deserialize, Default)]
 pub enum Status {
     #[default]
