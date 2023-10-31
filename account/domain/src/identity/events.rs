@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use event_sourcing::{aggregate::EventApplier, event::DomainEvent};
+use event_sourcing::event::{DomainEvent, EventApplier};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
