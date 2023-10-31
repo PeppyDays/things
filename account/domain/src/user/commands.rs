@@ -76,10 +76,10 @@ impl<R: Repository<User>> CommandExecutor<R> {
 
 #[cfg(test)]
 mod tests {
+    use event_sourcing::aggregate::EventSourced;
     use event_sourcing::repository::memory::MemoryRepository;
 
     use crate::user::commands::*;
-    use crate::user::events::*;
 
     #[tokio::test]
     async fn register_user_command_generates_user_registered_event() {
@@ -98,18 +98,15 @@ mod tests {
         command_executor.execute(command).await.unwrap();
 
         let envelopes: Vec<Envelope<User>> = repository.find_all_events(&id).await.unwrap();
-        let envelope = envelopes.get(0).unwrap();
         assert_eq!(envelopes.len(), 1);
-        assert_eq!(
-            envelope.event,
-            Event::UserRegistered {
-                id,
-                name: String::from("Arine"),
-                password: String::from("welcome"),
-                email: String::from("peppydays@gmail.com"),
-                language: String::from("en")
-            }
-        )
+
+        let user = User::load(envelopes).await;
+
+        assert_eq!(user.id, id);
+        assert_eq!(user.name, "Arine");
+        assert_eq!(user.email, "peppydays@gmail.com");
+        assert_eq!(user.language, "en");
+        assert!(user.verify_password("welcome"));
     }
 
     #[tokio::test]
