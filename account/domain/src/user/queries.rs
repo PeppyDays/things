@@ -8,6 +8,7 @@ use uuid::Uuid;
 #[derive(Debug)]
 pub enum Query {
     GetUser { id: Uuid },
+    VerifyCredential { id: Uuid, password: String },
 }
 
 #[derive(Clone)]
@@ -39,11 +40,77 @@ impl<R: Repository<User>> QueryReader<R> {
             Query::GetUser { id } => {
                 let user = self.load_aggregate(&id).await?;
 
-                if user.is_withdrawn() {
-                    return Err(Error::AlreadyWithdrawn { id: user.id });
+                match user.is_withdrawn() {
+                    true => Err(Error::AlreadyWithdrawn { id: user.id }),
+                    false => Ok(user),
                 }
-                Ok(user)
+            }
+            Query::VerifyCredential { id, password } => {
+                let user = self.load_aggregate(&id).await?;
+
+                match user.verify_password(&password) {
+                    true => Ok(user),
+                    false => Err(Error::InvalidCredential),
+                }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use event_sourcing::repository::memory::MemoryRepository;
+
+    use crate::user::{commands::*, queries::*};
+
+    #[tokio::test]
+    async fn verifying_with_correct_password_returns_aggregate_instance() {
+        let repository = MemoryRepository::new();
+        let mut command_executor = CommandExecutor::new(repository.clone());
+        let query_reader = QueryReader::new(repository.clone());
+
+        let id = Uuid::new_v4();
+        let command = Command::RegisterUser {
+            id,
+            name: String::from("Arine"),
+            password: String::from("welcome"),
+            email: String::from("peppydays@gmail.com"),
+            language: String::from("en"),
+        };
+        command_executor.execute(command).await.unwrap();
+
+        let query = Query::VerifyCredential {
+            id,
+            password: String::from("welcome"),
+        };
+
+        assert!(query_reader.read(query).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn verifying_with_incorrect_password_returns_error() {
+        let repository = MemoryRepository::new();
+        let mut command_executor = CommandExecutor::new(repository.clone());
+        let query_reader = QueryReader::new(repository.clone());
+
+        let id = Uuid::new_v4();
+        let command = Command::RegisterUser {
+            id,
+            name: String::from("Arine"),
+            password: String::from("welcome"),
+            email: String::from("peppydays@gmail.com"),
+            language: String::from("en"),
+        };
+        command_executor.execute(command).await.unwrap();
+
+        let query = Query::VerifyCredential {
+            id,
+            password: String::from("thanks"),
+        };
+
+        assert_eq!(
+            query_reader.read(query).await,
+            Err(Error::InvalidCredential)
+        );
     }
 }

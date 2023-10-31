@@ -1,4 +1,4 @@
-// use event_sourcing::aggregate::EventSourced;
+use event_sourcing::aggregate::EventSourced;
 use event_sourcing::envelope::Envelope;
 use event_sourcing::repository::interface::Repository;
 use uuid::Uuid;
@@ -36,10 +36,10 @@ impl<R: Repository<User>> CommandExecutor<R> {
             })
     }
 
-    // async fn load_aggregate(&self, id: &Uuid) -> Result<User, Error> {
-    //     let events = self.find_events(&id).await?;
-    //     Ok(User::load(events).await)
-    // }
+    async fn load_aggregate(&self, id: &Uuid) -> Result<User, Error> {
+        let events = self.find_events(&id).await?;
+        Ok(User::load(events).await)
+    }
 
     async fn save_aggregate(&mut self, aggregate: &mut User) -> Result<(), Error> {
         self.repository
