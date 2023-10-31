@@ -86,15 +86,10 @@ impl User {
         email: String,
         language: String,
     ) -> Result<(), Error> {
-        let hashed_password = Argon2::default()
-            .hash_password(password.as_bytes(), &SaltString::generate(&mut OsRng))
-            .map_err(|_| Error::HashingPassword)?
-            .to_string();
-
         let event = Event::UserRegistered {
             id,
             name,
-            password: hashed_password,
+            password: User::hash_password(&password)?,
             email,
             language,
         };
@@ -114,5 +109,14 @@ impl User {
                 &PasswordHash::new(&self.password).unwrap(),
             )
             .is_ok()
+    }
+
+    fn hash_password(password: &str) -> Result<String, Error> {
+        let hashed_password = Argon2::default()
+            .hash_password(password.as_bytes(), &SaltString::generate(&mut OsRng))
+            .map_err(|_| Error::HashingPassword)?
+            .to_string();
+
+        Ok(hashed_password)
     }
 }
