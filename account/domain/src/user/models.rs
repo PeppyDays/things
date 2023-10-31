@@ -1,3 +1,6 @@
+use argon2::password_hash::rand_core::OsRng;
+use argon2::password_hash::SaltString;
+use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use async_trait::async_trait;
 use event_sourcing::aggregate::EventSourced;
 use event_sourcing::envelope::Envelope;
@@ -83,18 +86,33 @@ impl User {
         email: String,
         language: String,
     ) -> Result<(), Error> {
+        let hashed_password = Argon2::default()
+            .hash_password(password.as_bytes(), &SaltString::generate(&mut OsRng))
+            .map_err(|_| Error::HashingPassword)?
+            .to_string();
+
         let event = Event::UserRegistered {
             id,
             name,
-            password,
+            password: hashed_password,
             email,
             language,
         };
         self.update(event).await;
+
         Ok(())
     }
 
     pub fn is_withdrawn(&self) -> bool {
         self.status == Status::Withdrawn
+    }
+
+    pub fn verify_password(&self, password: &str) -> bool {
+        Argon2::default()
+            .verify_password(
+                password.as_bytes(),
+                &PasswordHash::new(&self.password).unwrap(),
+            )
+            .is_ok()
     }
 }
