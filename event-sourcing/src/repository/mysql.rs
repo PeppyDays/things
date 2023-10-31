@@ -1,6 +1,6 @@
 use async_trait::async_trait;
-use sqlx::{MySql, Pool, Row};
 use sqlx::mysql::MySqlRow;
+use sqlx::{MySql, Pool, Row};
 use uuid::Uuid;
 
 use crate::aggregate::EventSourced;
@@ -65,7 +65,7 @@ impl<A: EventSourced> Repository<A> for MySqlRepository {
     async fn find_all_events(&self, aggregate_id: &Uuid) -> Result<Vec<Envelope<A>>, Error> {
         let query = format!("SELECT id, aggregate_name, aggregate_id, aggregate_sequence, event_name, event_version, event_payload, metadata FROM {DEFAULT_EVENT_TABLE} WHERE aggregate_name = ? AND aggregate_id = ? ORDER BY aggregate_sequence ASC");
 
-        sqlx::query(&query)
+        let envelopes = sqlx::query(&query)
             .bind(A::get_name())
             .bind(aggregate_id)
             .map(|row: MySqlRow| SerializedEnvelope {
@@ -83,7 +83,12 @@ impl<A: EventSourced> Repository<A> for MySqlRepository {
             .map_err(|error| Error::Execution(Box::new(error)))?
             .into_iter()
             .map(|event| Envelope::<A>::try_from(event))
-            .collect::<Result<Vec<Envelope<A>>, Error>>()
+            .collect::<Result<Vec<Envelope<A>>, Error>>()?;
+
+        match envelopes.is_empty() {
+            true => Err(Error::NotFound(aggregate_id.clone())),
+            false => Ok(envelopes),
+        }
     }
 }
 

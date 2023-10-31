@@ -12,9 +12,17 @@ use crate::repository::error::Error;
 use crate::repository::interface::Repository;
 use crate::repository::serialization::SerializedEnvelope;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct MemoryRepository {
     rows: Arc<RwLock<HashMap<Uuid, Vec<SerializedEnvelope>>>>,
+}
+
+impl Clone for MemoryRepository {
+    fn clone(&self) -> Self {
+        Self {
+            rows: Arc::clone(&self.rows),
+        }
+    }
 }
 
 impl MemoryRepository {
@@ -51,12 +59,15 @@ where
         let store = self.rows.read().map_err(|_| Error::Unknown)?;
 
         match store.get(aggregate_id) {
-            Some(events) => Ok(events
-                .clone()
-                .into_iter()
-                .map(|event| Envelope::try_from(event).map_err(|_| Error::Unknown))
-                .collect::<Result<Vec<Envelope<A>>, Error>>()?),
-            None => Ok(vec![]),
+            Some(events) => match events.is_empty() {
+                true => Err(Error::NotFound(aggregate_id.clone())),
+                false => Ok(events
+                    .clone()
+                    .into_iter()
+                    .map(|event| Envelope::try_from(event).map_err(|_| Error::Unknown))
+                    .collect::<Result<Vec<Envelope<A>>, Error>>()?),
+            },
+            None => Err(Error::NotFound(aggregate_id.clone())),
         }
     }
 }
@@ -91,13 +102,13 @@ mod test {
     }
 
     #[tokio::test]
-    async fn repository_returns_empty_vector_when_events_not_exist() {
+    async fn repository_returns_not_found_error_vector_when_events_not_exist() {
         let id = Uuid::default();
         let repository = MemoryRepository::new();
 
-        let events: Vec<Envelope<User>> = repository.find_all_events(&id).await.unwrap();
-
-        assert!(events.is_empty())
+        let result: Result<Vec<Envelope<User>>, Error> = repository.find_all_events(&id).await;
+        let error = result.err().unwrap();
+        assert_eq!(error.to_string(), format!("No entity found with ID {}", id));
     }
 
     #[tokio::test]
