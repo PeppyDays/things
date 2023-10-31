@@ -1,13 +1,21 @@
 use std::fmt::Debug;
 
+use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+
+use crate::aggregate::EventSourced;
 
 pub trait DomainEvent:
     Debug + Serialize + DeserializeOwned + Clone + PartialEq + Sync + Send
 {
     fn get_name(&self) -> String;
     fn get_version(&self) -> String;
+}
+
+#[async_trait]
+pub trait EventApplier<A: EventSourced> {
+    async fn apply(&mut self, event: A::Event);
 }
 
 #[cfg(test)]

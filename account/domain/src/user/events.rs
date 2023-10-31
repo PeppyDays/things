@@ -1,7 +1,7 @@
 use crate::user::models::{Status, User};
 use async_trait::async_trait;
-use event_sourcing::aggregate::EventApplier;
 use event_sourcing::event::DomainEvent;
+use event_sourcing::event::EventApplier;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 

@@ -6,10 +6,12 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use crate::envelope::Envelope;
-use crate::event::DomainEvent;
+use crate::event::{DomainEvent, EventApplier};
 
 #[async_trait]
-pub trait EventSourced: Default + Serialize + DeserializeOwned + Send + Sync + EventApplier<Self> {
+pub trait EventSourced:
+    Default + Serialize + DeserializeOwned + Send + Sync + EventApplier<Self>
+{
     type Event: DomainEvent;
     type Error: std::error::Error;
 
@@ -47,11 +49,6 @@ pub trait EventSourced: Default + Serialize + DeserializeOwned + Send + Sync + E
         }
         aggregate
     }
-}
-
-#[async_trait]
-pub trait EventApplier<A: EventSourced> {
-    async fn apply(&mut self, event: A::Event);
 }
 
 #[cfg(test)]
