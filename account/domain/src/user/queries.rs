@@ -1,9 +1,12 @@
-use crate::user::errors::Error;
-use crate::user::models::User;
+use uuid::Uuid;
+
 use event_sourcing::aggregate::EventSourced;
 use event_sourcing::envelope::Envelope;
 use event_sourcing::repository::interface::Repository;
-use uuid::Uuid;
+use event_sourcing::repository::error::Error as RepositoryError;
+
+use crate::user::errors::Error;
+use crate::user::models::User;
 
 #[derive(Debug)]
 pub enum Query {
@@ -21,12 +24,24 @@ impl<R: Repository<User>> QueryReader<R> {
         Self { repository }
     }
 
+    // async fn find_events(&self, id: &Uuid) -> Result<Vec<Envelope<User>>, Error> {
+    //     self.repository
+    //         .find_all_events(&id)
+    //         .await
+    //         .map_err(|error| Error::Database {
+    //             message: error.to_string(),
+    //         })
+    // }
+
     async fn find_events(&self, id: &Uuid) -> Result<Vec<Envelope<User>>, Error> {
         self.repository
             .find_all_events(&id)
             .await
-            .map_err(|error| Error::Database {
-                message: error.to_string(),
+            .map_err(|error| match error {
+                RepositoryError::NotFound(id) => Error::NotFound { id },
+                _ => Error::Database {
+                    message: error.to_string(),
+                },
             })
     }
 
