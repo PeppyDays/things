@@ -1,6 +1,6 @@
 use async_trait::async_trait;
-use sqlx::{Pool, Postgres, Row};
 use sqlx::postgres::PgRow;
+use sqlx::{Pool, Postgres, Row};
 use uuid::Uuid;
 
 use crate::aggregate::EventSourced;
@@ -65,7 +65,7 @@ impl<A: EventSourced> Repository<A> for PostgresRepository {
     async fn find_all_events(&self, aggregate_id: &Uuid) -> Result<Vec<Envelope<A>>, Error> {
         let query = format!("SELECT id, aggregate_name, aggregate_id, aggregate_sequence, event_name, event_version, event_payload, metadata FROM {DEFAULT_EVENT_TABLE} WHERE aggregate_name = $1 AND aggregate_id = $2 ORDER BY aggregate_sequence ASC");
 
-        sqlx::query(&query)
+        let envelopes = sqlx::query(&query)
             .bind(A::get_name())
             .bind(aggregate_id)
             .map(|row: PgRow| SerializedEnvelope {
@@ -86,7 +86,12 @@ impl<A: EventSourced> Repository<A> for PostgresRepository {
                 Envelope::<A>::try_from(event)
                     .map_err(|error| Error::Deserialization(Box::new(error)))
             })
-            .collect::<Result<Vec<Envelope<A>>, Error>>()
+            .collect::<Result<Vec<Envelope<A>>, Error>>()?;
+
+        match envelopes.is_empty() {
+            true => Err(Error::NotFound(aggregate_id.clone())),
+            false => Ok(envelopes),
+        }
     }
 }
 
