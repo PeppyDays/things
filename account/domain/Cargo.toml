@@ -10,3 +10,4 @@ async-trait = "0.1"
 tokio = { version = "1.32", features = ["rt-multi-thread", "macros"] }
 event-sourcing = { path = "../../event-sourcing" }
 argon2 = { version = "0.5", features = ["std"] }
+jsonwebtoken = "9"

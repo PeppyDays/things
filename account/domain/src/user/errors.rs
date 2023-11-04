@@ -24,7 +24,7 @@ impl Display for Error {
                 f,
                 "Error happened during interacting with database: {message}"
             ),
-            Error::Unknown => write!(f, "Unknown error"),
+            Error::Unknown => write!(f, "Unknown error happened"),
         }
     }
 }
