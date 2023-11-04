@@ -14,3 +14,11 @@ CREATE TABLE events (
 );
 
 CREATE UNIQUE INDEX ix01_events ON events (aggregate_name, aggregate_id, aggregate_sequence);
+
+CREATE TABLE identities (
+    user_id   VARBINARY(16) NOT NULL,
+    user_role VARCHAR(10)   NOT NULL,
+    refresh_token VARCHAR(256) NOT NULL
+);
+
+CREATE UNIQUE INDEX ix01_identities ON identities (user_id, user_role);

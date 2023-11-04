@@ -1,11 +1,10 @@
-use axum::http::StatusCode;
 use axum::{extract::State, Json};
+use axum::http::StatusCode;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use domain::identity::commands::Command as IdentityCommand;
 use domain::identity::errors::Error as IdentityError;
-use domain::identity::models::Role as IdentityRole;
 use domain::user::commands::Command as UserCommand;
 use domain::user::errors::Error as UserError;
 
@@ -39,7 +38,7 @@ pub async fn sign_up_with_credential(
 async fn register_identity(container: &mut Container, id: Uuid) -> Result<(), Error> {
     let command = IdentityCommand::RegisterIdentity {
         id,
-        role: IdentityRole::Member,
+        role: String::from("Member"),
     };
 
     container

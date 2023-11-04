@@ -10,7 +10,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: welcome
     volumes:
-      - ./database/initialisation:/docker-entrypoint-initdb.d
+      - ./infrastructure/database:/docker-entrypoint-initdb.d
     command:
       - --character-set-client-handshake=0
       - --sql_generate_invisible_primary_key=ON

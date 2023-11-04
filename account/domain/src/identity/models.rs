@@ -1,65 +1,104 @@
-use async_trait::async_trait;
-use event_sourcing::{aggregate::EventSourced, envelope::Envelope};
-use serde::{Deserialize, Serialize};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use jsonwebtoken::{
+    Algorithm as JwtAlgorithm, encode as jwt_encode, EncodingKey as JwtEncodingKey,
+    Header as JwtHeader,
+};
+use serde::Serialize;
 use uuid::Uuid;
 
 use crate::identity::errors::Error;
-use crate::identity::events::Event;
 
-#[derive(Default, Serialize, Deserialize, Debug, PartialEq)]
+const ACCESS_TOKEN_DURATION_IN_DAYS: u64 = 1;
+const ACCESS_TOKEN_SECRET: &str = "ACCOUNT_ACCESS_TOKEN_SECRET";
+const REFRESH_TOKEN_DURATION_IN_DAYS: u64 = 90;
+const REFRESH_TOKEN_SECRET: &str = "ACCOUNT_REFRESH_TOKEN_SECRET";
+
+#[derive(Clone, PartialEq, Debug)]
 pub struct Identity {
-    pub id: Uuid,
-    pub role: Role,
+    pub user: User,
     pub refresh_token: Option<RefreshToken>,
-    sequence: i64,
-    pending_events: Vec<Envelope<Self>>,
 }
 
-#[derive(Default, Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
+pub struct User {
+    pub id: Uuid,
+    pub role: Role,
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq)]
 pub enum Role {
-    #[default]
     Member,
     Administrator,
 }
 
-#[derive(Default, Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct RefreshToken {
-    pub token: Uuid,
-    pub expiry: u128,
+#[derive(PartialEq, Debug)]
+pub struct AccessToken(pub String);
+
+#[derive(Serialize)]
+struct AccessTokenClaims {
+    iat: u64,
+    exp: u64,
+    id: Uuid,
+    role: Role,
 }
 
-#[async_trait]
-impl EventSourced for Identity {
-    type Event = Event;
-    type Error = Error;
+#[derive(Clone, Debug, PartialEq)]
+pub struct RefreshToken(pub String);
 
-    fn get_name() -> String {
-        String::from("Identity")
-    }
-    fn get_id(&self) -> Uuid {
-        self.id
-    }
-    fn get_sequence(&self) -> i64 {
-        self.sequence
-    }
-    fn set_sequence(&mut self, seq: i64) {
-        self.sequence = seq
-    }
-    fn get_pending_events(&self) -> &Vec<Envelope<Self>> {
-        &self.pending_events
-    }
-    fn get_mut_pending_events(&mut self) -> &mut Vec<Envelope<Self>> {
-        &mut self.pending_events
-    }
-    fn add_pending_event(&mut self, event: Envelope<Self>) {
-        self.pending_events.push(event)
-    }
+#[derive(Serialize)]
+struct RefreshTokenClaims {
+    iat: u64,
+    exp: u64,
 }
 
 impl Identity {
-    pub async fn register(&mut self, id: Uuid, role: Role) -> Result<(), Error> {
-        let event = Event::IdentityRegistered { id, role };
-        self.update(event).await;
-        Ok(())
+    pub async fn new(user: User) -> Self {
+        Self {
+            user,
+            refresh_token: None,
+        }
+    }
+
+    pub async fn issue_access_token(&mut self) -> Result<AccessToken, Error> {
+        let header = JwtHeader::new(JwtAlgorithm::HS256);
+        let claims = AccessTokenClaims {
+            iat: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as u64,
+            exp: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as u64
+                + (ACCESS_TOKEN_DURATION_IN_DAYS * 24 * 60 * 60),
+            id: self.user.id,
+            role: self.user.role.clone(),
+        };
+        let key = JwtEncodingKey::from_secret(ACCESS_TOKEN_SECRET.as_ref());
+        let access_token =
+            jwt_encode(&header, &claims, &key).map_err(|error| Error::TokenCreationFailed {
+                message: error.to_string(),
+            })?;
+
+        let claims = RefreshTokenClaims {
+            iat: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as u64,
+            exp: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as u64
+                + (REFRESH_TOKEN_DURATION_IN_DAYS * 24 * 60 * 60),
+        };
+        let key = JwtEncodingKey::from_secret(REFRESH_TOKEN_SECRET.as_ref());
+        self.refresh_token = Some(RefreshToken(jwt_encode(&header, &claims, &key).map_err(|error| {
+            Error::TokenCreationFailed {
+                message: error.to_string(),
+            }
+        })?));
+
+        Ok(AccessToken(access_token))
     }
 }
