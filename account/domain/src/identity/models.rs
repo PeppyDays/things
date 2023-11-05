@@ -159,6 +159,11 @@ impl Identity {
             message: error.to_string(),
         })
     }
+
+    pub fn clear_refresh_token(&mut self) -> Result<(), Error> {
+        self.refresh_token = None;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
