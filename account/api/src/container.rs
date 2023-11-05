@@ -1,6 +1,9 @@
 use sqlx::mysql::MySqlPoolOptions;
 
-use domain::identity::commands::CommandExecutor as IdentityCommandExecutor;
+use domain::identity::{
+    commands::CommandExecutor as IdentityCommandExecutor,
+    queries::QueryReader as IdentityQueryReader,
+};
 use domain::user::{
     commands::CommandExecutor as UserCommandExecutor, queries::QueryReader as UserQueryReader,
 };
@@ -12,6 +15,7 @@ pub struct Container {
     pub user_command_executor: UserCommandExecutor<UserMySqlRepository>,
     pub user_query_reader: UserQueryReader<UserMySqlRepository>,
     pub identity_command_executor: IdentityCommandExecutor<IdentityMySqlRepository>,
+    pub identity_query_reader: IdentityQueryReader,
 }
 
 impl Container {
@@ -34,11 +38,13 @@ impl Container {
                 .unwrap(),
         );
         let identity_command_executor = IdentityCommandExecutor::new(identity_repository.clone());
+        let identity_query_reader = IdentityQueryReader::new();
 
         Self {
             user_command_executor,
             user_query_reader,
             identity_command_executor,
+            identity_query_reader,
         }
     }
 }

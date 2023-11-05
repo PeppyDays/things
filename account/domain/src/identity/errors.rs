@@ -9,6 +9,7 @@ pub enum Error {
     InvalidRole { role: String },
     TokenCreationFailed { message: String },
     TokenRefreshFailed { message: String },
+    TokenValidationFailed { message: String },
     Database { message: String },
     Unknown,
 }
@@ -30,6 +31,9 @@ impl Display for Error {
             }
             Error::TokenRefreshFailed { message } => {
                 write!(f, "Token cannot be refreshed: {}", message)
+            }
+            Error::TokenValidationFailed { message } => {
+                write!(f, "Token cannot be validated: {}", message)
             }
             Error::Database { message } => write!(
                 f,
