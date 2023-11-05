@@ -34,7 +34,7 @@ impl<R: Repository<User>> CommandExecutor<R> {
             .find_all_events(&id)
             .await
             .map_err(|error| match error {
-                RepositoryError::NotFound(id) => Error::NotFound { id },
+                RepositoryError::NotFound(id) => Error::EntityNotFound { id },
                 _ => Error::Database {
                     message: error.to_string(),
                 },
@@ -69,7 +69,7 @@ impl<R: Repository<User>> CommandExecutor<R> {
                 match resulted_events {
                     Ok(_) => Err(Error::AlreadyRegistered { id }),
                     Err(error) => match error {
-                        Error::NotFound { id } => {
+                        Error::EntityNotFound { id } => {
                             let mut user = User::default();
                             user.register(id, name, password, email, language).await?;
                             self.save_aggregate(&mut user).await?;

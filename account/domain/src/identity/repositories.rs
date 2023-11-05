@@ -82,7 +82,7 @@ mod tests {
         assert!(result.is_ok());
         assert_eq!(repository.rows.read().unwrap().len(), 1);
 
-        identity.issue_access_token().await.unwrap();
+        identity.issue_access_and_refresh_tokens().await.unwrap();
         let result = repository.save(identity.clone()).await;
         assert!(result.is_ok());
         assert_eq!(repository.rows.read().unwrap().len(), 1);
