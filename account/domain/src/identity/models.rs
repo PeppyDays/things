@@ -27,7 +27,7 @@ pub struct User {
     pub role: Role,
 }
 
-#[derive(Serialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Role {
     Member,
     Administrator,
@@ -42,7 +42,7 @@ pub struct Tokens {
 #[derive(PartialEq, Debug, Clone)]
 pub struct AccessToken(pub String);
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct AccessTokenClaims {
     iat: u64,
     exp: u64,
@@ -163,6 +163,21 @@ impl Identity {
     pub fn clear_refresh_token(&mut self) -> Result<(), Error> {
         self.refresh_token = None;
         Ok(())
+    }
+
+    pub async fn extract_user_from_access_token(access_token: &AccessToken) -> Result<User, Error> {
+        jwt_decode::<AccessTokenClaims>(
+            &access_token.0,
+            &JwtDecodingKey::from_secret(ACCESS_TOKEN_SECRET.as_ref()),
+            &JwtValidation::new(JwtAlgorithm::HS256),
+        )
+        .map_err(|error| Error::TokenValidationFailed {
+            message: error.to_string(),
+        })
+        .map(|token| User {
+            id: token.claims.id,
+            role: token.claims.role,
+        })
     }
 }
 

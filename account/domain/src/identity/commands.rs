@@ -22,7 +22,7 @@ pub enum Command {
     },
     InvalidateRefreshToken {
         id: Uuid,
-        role: String,
+        role: Role,
     },
 }
 
@@ -93,10 +93,7 @@ impl<R: Repository> CommandExecutor<R> {
                 }
             }
             Command::InvalidateRefreshToken { id, role } => {
-                let user = User {
-                    id,
-                    role: self.convert_to_role(&role)?,
-                };
+                let user = User { id, role };
                 let identity = self.repository.find_by_user(&user).await?;
 
                 match identity {
@@ -310,7 +307,7 @@ mod tests {
 
         let command = Command::InvalidateRefreshToken {
             id,
-            role: String::from("Member"),
+            role: Role::Member,
         };
         command_executor.execute(command).await.unwrap();
 
