@@ -20,6 +20,10 @@ pub enum Command {
         role: String,
         refresh_token: String,
     },
+    InvalidateRefreshToken {
+        id: Uuid,
+        role: String,
+    },
 }
 
 #[derive(Clone)]
@@ -84,6 +88,22 @@ impl<R: Repository> CommandExecutor<R> {
                         let tokens = identity.issue_access_and_refresh_tokens().await?;
                         self.repository.save(identity).await?;
                         Ok(Some(tokens))
+                    }
+                    None => Err(Error::EntityNotFound { user }),
+                }
+            }
+            Command::InvalidateRefreshToken { id, role } => {
+                let user = User {
+                    id,
+                    role: self.convert_to_role(&role)?,
+                };
+                let identity = self.repository.find_by_user(&user).await?;
+
+                match identity {
+                    Some(mut identity) => {
+                        identity.clear_refresh_token()?;
+                        self.repository.save(identity).await?;
+                        Ok(None)
                     }
                     None => Err(Error::EntityNotFound { user }),
                 }
@@ -216,16 +236,18 @@ mod tests {
             id,
             role: Role::Member,
         };
-        let identity = Identity {
+        let mut identity = Identity {
             user: user.clone(),
-            refresh_token: Some(RefreshToken(String::from("000.111.222"))),
+            refresh_token: None,
         };
-        repository.save(identity).await.unwrap();
+        identity.issue_access_and_refresh_tokens().await.unwrap();
+        repository.save(identity.clone()).await.unwrap();
 
+        let refresh_token = identity.refresh_token.unwrap().0.clone();
         let command = Command::RefreshAccessToken {
             id,
             role: String::from("Member"),
-            refresh_token: String::from("000.111.222"),
+            refresh_token,
         };
         let tokens = command_executor.execute(command).await.unwrap();
 
@@ -272,5 +294,34 @@ mod tests {
         let error = command_executor.execute(command).await.unwrap_err();
 
         assert!(matches!(error, Error::EntityNotFound { .. }));
+    }
+
+    #[tokio::test]
+    async fn refresh_token_invalidation_removes_persisted_refresh_token() {
+        let repository = MemoryRepository::new();
+        let mut command_executor = CommandExecutor::new(repository.clone());
+
+        let id = Uuid::new_v4();
+        let command = Command::RegisterIdentity {
+            id,
+            role: String::from("Member"),
+        };
+        command_executor.execute(command).await.unwrap();
+
+        let command = Command::InvalidateRefreshToken {
+            id,
+            role: String::from("Member"),
+        };
+        command_executor.execute(command).await.unwrap();
+
+        let identity = repository
+            .find_by_user(&User {
+                id,
+                role: Role::Member,
+            })
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(identity.refresh_token, None);
     }
 }
