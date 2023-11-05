@@ -5,9 +5,10 @@ use crate::identity::models::User;
 #[derive(Debug, PartialEq)]
 pub enum Error {
     AlreadyRegistered { user: User },
-    NotFound { user: User },
+    EntityNotFound { user: User },
     InvalidRole { role: String },
     TokenCreationFailed { message: String },
+    TokenRefreshFailed { message: String },
     Database { message: String },
     Unknown,
 }
@@ -18,17 +19,22 @@ impl Display for Error {
             Error::AlreadyRegistered { user } => {
                 write!(f, "User {}'s identity is already registered", user.id)
             }
-            Error::NotFound { user } => write!(f, "User {}'s identity is not found", user.id),
+            Error::EntityNotFound { user } => write!(f, "User {}'s identity is not found", user.id),
             Error::InvalidRole { role } => write!(f, "Role {} is not defined", role),
             Error::TokenCreationFailed { message } => {
                 write!(
                     f,
-                    "Error happened during processing authentication token: {message}"
+                    "Error happened during processing authentication token: {}",
+                    message
                 )
+            }
+            Error::TokenRefreshFailed { message } => {
+                write!(f, "Token cannot be refreshed: {}", message)
             }
             Error::Database { message } => write!(
                 f,
-                "Error happened during interacting with database: {message}"
+                "Error happened during interacting with database: {}",
+                message
             ),
             Error::Unknown => write!(f, "Unknown error"),
         }

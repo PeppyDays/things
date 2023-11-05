@@ -1,13 +1,25 @@
 use uuid::Uuid;
 
 use crate::identity::errors::Error;
-use crate::identity::models::{AccessToken, Identity, Role, User};
+use crate::identity::models::RefreshToken;
+use crate::identity::models::{Identity, Role, Tokens, User};
 use crate::identity::repositories::Repository;
 
 #[derive(Clone)]
 pub enum Command {
-    RegisterIdentity { id: Uuid, role: String },
-    IssueAccessToken { id: Uuid, role: String },
+    RegisterIdentity {
+        id: Uuid,
+        role: String,
+    },
+    IssueAccessToken {
+        id: Uuid,
+        role: String,
+    },
+    RefreshAccessToken {
+        id: Uuid,
+        role: String,
+        refresh_token: String,
+    },
 }
 
 #[derive(Clone)]
@@ -20,7 +32,7 @@ impl<R: Repository> CommandExecutor<R> {
         Self { repository }
     }
 
-    pub async fn execute(&mut self, command: Command) -> Result<Option<AccessToken>, Error> {
+    pub async fn execute(&mut self, command: Command) -> Result<Option<Tokens>, Error> {
         match command {
             Command::RegisterIdentity { id, role } => {
                 let user = User {
@@ -46,11 +58,34 @@ impl<R: Repository> CommandExecutor<R> {
 
                 match identity {
                     Some(mut identity) => {
-                        let access_token = identity.issue_access_token().await?;
+                        let tokens = identity.issue_access_and_refresh_tokens().await?;
                         self.repository.save(identity).await?;
-                        Ok(Some(access_token))
+                        Ok(Some(tokens))
                     }
-                    None => Err(Error::NotFound { user }),
+                    None => Err(Error::EntityNotFound { user }),
+                }
+            }
+            Command::RefreshAccessToken {
+                id,
+                role,
+                refresh_token,
+            } => {
+                let user = User {
+                    id,
+                    role: self.convert_to_role(&role)?,
+                };
+                let identity = self.repository.find_by_user(&user).await?;
+
+                match identity {
+                    Some(mut identity) => {
+                        identity
+                            .validate_refresh_token(&RefreshToken(refresh_token))
+                            .await?;
+                        let tokens = identity.issue_access_and_refresh_tokens().await?;
+                        self.repository.save(identity).await?;
+                        Ok(Some(tokens))
+                    }
+                    None => Err(Error::EntityNotFound { user }),
                 }
             }
         }
@@ -60,7 +95,9 @@ impl<R: Repository> CommandExecutor<R> {
         match role {
             "Member" => Ok(Role::Member),
             "Administrator" => Ok(Role::Administrator),
-            _ => Err(Error::InvalidRole { role: String::from(role) }),
+            _ => Err(Error::InvalidRole {
+                role: String::from(role),
+            }),
         }
     }
 }
@@ -84,8 +121,21 @@ mod tests {
 
         command_executor.execute(command).await.unwrap();
 
-        let identity = repository.find_by_user(&User { id, role: Role::Member }).await.unwrap().unwrap();
-        assert_eq!(identity.user, User { id, role: Role::Member });
+        let identity = repository
+            .find_by_user(&User {
+                id,
+                role: Role::Member,
+            })
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            identity.user,
+            User {
+                id,
+                role: Role::Member
+            }
+        );
         assert!(identity.refresh_token.is_none());
     }
 
@@ -102,11 +152,19 @@ mod tests {
         command_executor.execute(command.clone()).await.unwrap();
 
         let result = command_executor.execute(command).await;
-        assert_eq!(result, Err(Error::AlreadyRegistered { user: User { id, role: Role::Member } }));
+        assert_eq!(
+            result,
+            Err(Error::AlreadyRegistered {
+                user: User {
+                    id,
+                    role: Role::Member
+                }
+            })
+        );
     }
 
     #[tokio::test]
-    async fn issuing_access_token_returns_access_token_and_stores_refresh_token() {
+    async fn issuing_access_and_refresh_tokens_return_tokens_and_stores_refresh_token() {
         let repository = MemoryRepository::new();
         let mut command_executor = CommandExecutor::new(repository.clone());
 
@@ -121,15 +179,13 @@ mod tests {
             id,
             role: String::from("Member"),
         };
-        let access_token = command_executor.execute(command).await.unwrap();
-        let refresh_token = repository.find_by_user(&User { id, role: Role::Member }).await.unwrap().unwrap().refresh_token;
+        let tokens = command_executor.execute(command).await.unwrap();
 
-        assert!(access_token.is_some());
-        assert!(refresh_token.is_some());
+        assert!(tokens.is_some());
     }
 
     #[tokio::test]
-    async fn issuing_access_token_fails_when_identity_not_found() {
+    async fn issuing_access_and_refresh_tokens_fail_when_identity_not_found() {
         let repository = MemoryRepository::new();
         let mut command_executor = CommandExecutor::new(repository.clone());
 
@@ -139,6 +195,82 @@ mod tests {
             role: String::from("Member"),
         };
         let result = command_executor.execute(command).await;
-        assert_eq!(result, Err(Error::NotFound { user: User { id, role: Role::Member } }));
+        assert_eq!(
+            result,
+            Err(Error::EntityNotFound {
+                user: User {
+                    id,
+                    role: Role::Member
+                }
+            })
+        );
+    }
+
+    #[tokio::test]
+    async fn refresh_access_token_succeeds_when_requested_and_persisted_tokens_are_same() {
+        let repository = MemoryRepository::new();
+        let mut command_executor = CommandExecutor::new(repository.clone());
+
+        let id = Uuid::new_v4();
+        let user = User {
+            id,
+            role: Role::Member,
+        };
+        let identity = Identity {
+            user: user.clone(),
+            refresh_token: Some(RefreshToken(String::from("000.111.222"))),
+        };
+        repository.save(identity).await.unwrap();
+
+        let command = Command::RefreshAccessToken {
+            id,
+            role: String::from("Member"),
+            refresh_token: String::from("000.111.222"),
+        };
+        let tokens = command_executor.execute(command).await.unwrap();
+
+        assert!(tokens.is_some());
+    }
+
+    #[tokio::test]
+    async fn refresh_access_token_fails_when_requested_and_persisted_tokens_are_mismatched() {
+        let repository = MemoryRepository::new();
+        let mut command_executor = CommandExecutor::new(repository.clone());
+
+        let id = Uuid::new_v4();
+        let user = User {
+            id,
+            role: Role::Member,
+        };
+        let identity = Identity {
+            user: user.clone(),
+            refresh_token: Some(RefreshToken(String::from("000.111.222"))),
+        };
+        repository.save(identity).await.unwrap();
+
+        let command = Command::RefreshAccessToken {
+            id,
+            role: String::from("Member"),
+            refresh_token: String::from("000.000.000"),
+        };
+        let error = command_executor.execute(command).await.unwrap_err();
+
+        assert!(matches!(error, Error::TokenRefreshFailed { .. }));
+    }
+
+    #[tokio::test]
+    async fn refresh_access_token_fails_when_no_entity_found() {
+        let repository = MemoryRepository::new();
+        let mut command_executor = CommandExecutor::new(repository.clone());
+
+        let id = Uuid::new_v4();
+        let command = Command::RefreshAccessToken {
+            id,
+            role: String::from("Member"),
+            refresh_token: String::from("000.000.000"),
+        };
+        let error = command_executor.execute(command).await.unwrap_err();
+
+        assert!(matches!(error, Error::EntityNotFound { .. }));
     }
 }

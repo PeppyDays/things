@@ -2,8 +2,8 @@ use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use domain::identity::commands::Command as IdentityCommand;
 use domain::identity::errors::Error as IdentityError;
+use domain::identity::{commands::Command as IdentityCommand, models::Tokens};
 use domain::user::errors::Error as UserError;
 use domain::user::queries::Query as UserQuery;
 
@@ -19,6 +19,7 @@ pub struct Request {
 #[derive(Serialize)]
 pub struct Response {
     access_token: String,
+    refresh_token: String,
 }
 
 pub async fn sign_in_with_credential(
@@ -26,9 +27,12 @@ pub async fn sign_in_with_credential(
     Json(request): Json<Request>,
 ) -> Result<Json<Response>, Error> {
     verify_credential(&container, request.clone()).await?;
-    let access_token = issue_access_token(&mut container, request).await?;
+    let tokens = issue_access_and_refresh_tokens(&mut container, request).await?;
 
-    Ok(Json(Response { access_token }))
+    Ok(Json(Response {
+        access_token: tokens.access_token.0,
+        refresh_token: tokens.refresh_token.0,
+    }))
 }
 
 async fn verify_credential(container: &Container, request: Request) -> Result<(), Error> {
@@ -42,7 +46,7 @@ async fn verify_credential(container: &Container, request: Request) -> Result<()
         .read(query)
         .await
         .map_err(|error| match error {
-            UserError::InvalidCredential | UserError::NotFound { .. } => Error::new(
+            UserError::InvalidCredential | UserError::EntityNotFound { .. } => Error::new(
                 StatusCode::UNAUTHORIZED,
                 "Failed to sign in due to the invalid credential",
             ),
@@ -51,20 +55,25 @@ async fn verify_credential(container: &Container, request: Request) -> Result<()
         .map(|_| ())
 }
 
-async fn issue_access_token(container: &mut Container, request: Request) -> Result<String, Error> {
-    let command = IdentityCommand::IssueAccessToken { id: request.id, role: request.role };
+async fn issue_access_and_refresh_tokens(
+    container: &mut Container,
+    request: Request,
+) -> Result<Tokens, Error> {
+    let command = IdentityCommand::IssueAccessToken {
+        id: request.id,
+        role: request.role,
+    };
 
     container
         .identity_command_executor
         .execute(command)
         .await
         .map_err(|error| match error {
-            IdentityError::NotFound { .. } => Error::new(
+            IdentityError::EntityNotFound { .. } => Error::new(
                 StatusCode::UNAUTHORIZED,
                 "No identity found for the given user",
             ),
             _ => Error::new(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
         })?
-        .map(|access_token| access_token.0)
         .ok_or_else(|| Error::new(StatusCode::UNAUTHORIZED, "Failed to issue access token"))
 }

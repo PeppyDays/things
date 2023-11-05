@@ -2,8 +2,8 @@ use uuid::Uuid;
 
 use event_sourcing::aggregate::EventSourced;
 use event_sourcing::envelope::Envelope;
-use event_sourcing::repository::interface::Repository;
 use event_sourcing::repository::error::Error as RepositoryError;
+use event_sourcing::repository::interface::Repository;
 
 use crate::user::errors::Error;
 use crate::user::models::User;
@@ -38,7 +38,7 @@ impl<R: Repository<User>> QueryReader<R> {
             .find_all_events(&id)
             .await
             .map_err(|error| match error {
-                RepositoryError::NotFound(id) => Error::NotFound { id },
+                RepositoryError::NotFound(id) => Error::EntityNotFound { id },
                 _ => Error::Database {
                     message: error.to_string(),
                 },

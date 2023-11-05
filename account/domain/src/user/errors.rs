@@ -5,7 +5,7 @@ use uuid::Uuid;
 pub enum Error {
     AlreadyRegistered { id: Uuid },
     AlreadyWithdrawn { id: Uuid },
-    NotFound { id: Uuid },
+    EntityNotFound { id: Uuid },
     InvalidCredential,
     HashingPassword,
     Database { message: String },
@@ -17,7 +17,7 @@ impl Display for Error {
         match self {
             Error::AlreadyRegistered { id } => write!(f, "User {id} is already registered"),
             Error::AlreadyWithdrawn { id } => write!(f, "User {id} is already withdrawn"),
-            Error::NotFound { id } => write!(f, "User {id} is not found"),
+            Error::EntityNotFound { id } => write!(f, "User {id} is not found"),
             Error::InvalidCredential => write!(f, "Credential is not verified"),
             Error::HashingPassword => write!(f, "Failed to hashing a given password"),
             Error::Database { message } => write!(
