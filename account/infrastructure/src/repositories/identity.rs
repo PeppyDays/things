@@ -1,10 +1,10 @@
 use async_trait::async_trait;
-use sqlx::{MySql, Pool, query, Row};
 use sqlx::mysql::MySqlRow;
+use sqlx::{query, MySql, Pool, Row};
 
 use domain::identity::errors::Error;
-use domain::identity::models::{Identity, RefreshToken, Role};
 use domain::identity::models::User;
+use domain::identity::models::{Identity, Role, Tokens};
 use domain::identity::repositories::Repository;
 
 #[derive(Clone)]
@@ -27,8 +27,8 @@ impl Repository for MySqlRepository {
                 Role::Member => "Member",
                 Role::Administrator => "Administrator",
             })
-            .bind(&identity.refresh_token.clone().map(|t| t.0))
-            .bind(&identity.refresh_token.clone().map(|t| t.0))
+            .bind(&identity.tokens.clone().map(|t| t.access_token.0))
+            .bind(&identity.tokens.clone().map(|t| t.access_token.0))
             .execute(&self.pool)
             .await
             .map_err(|error| Error::Database { message: error.to_string() })?;
@@ -52,8 +52,11 @@ impl Repository for MySqlRepository {
                         _ => panic!("Invalid role"),
                     },
                 },
-                refresh_token: match row.get("refresh_token") {
-                    Some(token) => Some(RefreshToken(token)),
+                tokens: match row.get::<Option<&str>, &str>("refresh_token") {
+                    Some(refresh_token) => Some(Tokens::new(
+                        "".into(),
+                        refresh_token.into(),
+                    )),
                     None => None,
                 },
             })

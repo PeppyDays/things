@@ -2,9 +2,9 @@ use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use domain::identity::commands::Command as IdentityCommand;
 use domain::identity::errors::Error as IdentityError;
 
+use crate::handlers::parse_identity_user;
 use crate::{container::Container, errors::Error};
 
 #[derive(Deserialize, Clone)]
@@ -21,18 +21,14 @@ pub struct Response {
 }
 
 pub async fn handle(
-    State(mut container): State<Container>,
+    State(container): State<Container>,
     Json(request): Json<Request>,
 ) -> Result<Json<Response>, Error> {
-    let command = IdentityCommand::RefreshAccessToken {
-        id: request.id,
-        role: request.role,
-        refresh_token: request.refresh_token,
-    };
+    let identity_user = parse_identity_user(request.id, request.role)?;
 
-    container
-        .identity_command_executor
-        .execute(command)
+    let tokens = container
+        .identity_service
+        .refresh_tokens(identity_user, request.refresh_token.into())
         .await
         .map_err(|error| match error {
             IdentityError::TokenRefreshFailed { .. } => {
@@ -42,17 +38,10 @@ pub async fn handle(
                 Error::new(StatusCode::BAD_REQUEST, error.to_string())
             }
             _ => Error::new(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
-        })?
-        .map_or(
-            Err(Error::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                String::from("Tokens are not found"),
-            )),
-            |tokens| {
-                Ok(Json(Response {
-                    access_token: tokens.access_token.0,
-                    refresh_token: tokens.refresh_token.0,
-                }))
-            },
-        )
+        })?;
+
+    Ok(Json(Response {
+        access_token: tokens.access_token.into(),
+        refresh_token: tokens.refresh_token.into(),
+    }))
 }

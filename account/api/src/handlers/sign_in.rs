@@ -3,10 +3,11 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use domain::identity::errors::Error as IdentityError;
-use domain::identity::{commands::Command as IdentityCommand, models::Tokens};
+use domain::identity::models::Tokens as IdentityTokens;
 use domain::user::errors::Error as UserError;
 use domain::user::queries::Query as UserQuery;
 
+use crate::handlers::parse_identity_user;
 use crate::{container::Container, errors::Error};
 
 #[derive(Deserialize, Clone)]
@@ -27,11 +28,11 @@ pub async fn handle(
     Json(request): Json<Request>,
 ) -> Result<Json<Response>, Error> {
     verify_credential(&container, request.clone()).await?;
-    let tokens = issue_access_and_refresh_tokens(&mut container, request).await?;
+    let tokens = issue_tokens(&mut container, request).await?;
 
     Ok(Json(Response {
-        access_token: tokens.access_token.0,
-        refresh_token: tokens.refresh_token.0,
+        access_token: tokens.access_token.into(),
+        refresh_token: tokens.refresh_token.into(),
     }))
 }
 
@@ -55,18 +56,15 @@ async fn verify_credential(container: &Container, request: Request) -> Result<()
         .map(|_| ())
 }
 
-async fn issue_access_and_refresh_tokens(
+async fn issue_tokens(
     container: &mut Container,
     request: Request,
-) -> Result<Tokens, Error> {
-    let command = IdentityCommand::IssueAccessToken {
-        id: request.id,
-        role: request.role,
-    };
+) -> Result<IdentityTokens, Error> {
+    let identity_user = parse_identity_user(request.id, request.role)?;
 
     container
-        .identity_command_executor
-        .execute(command)
+        .identity_service
+        .issue_tokens(identity_user)
         .await
         .map_err(|error| match error {
             IdentityError::EntityNotFound { .. } => Error::new(
@@ -74,6 +72,5 @@ async fn issue_access_and_refresh_tokens(
                 "No identity found for the given user",
             ),
             _ => Error::new(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
-        })?
-        .ok_or_else(|| Error::new(StatusCode::UNAUTHORIZED, "Failed to issue access token"))
+        })
 }
