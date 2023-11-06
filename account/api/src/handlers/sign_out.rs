@@ -11,7 +11,7 @@ use domain::identity::{commands::Command as IdentityCommand, models::User as Ide
 
 use crate::{container::Container, errors::Error};
 
-pub async fn sign_out(
+pub async fn handle(
     State(mut container): State<Container>,
     TypedHeader(authorization): TypedHeader<Authorization<Bearer>>,
 ) -> Result<StatusCode, Error> {

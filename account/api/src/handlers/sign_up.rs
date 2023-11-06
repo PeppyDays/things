@@ -23,7 +23,7 @@ pub struct Response {
     id: Uuid,
 }
 
-pub async fn sign_up_with_credential(
+pub async fn handle(
     State(mut container): State<Container>,
     Json(request): Json<Request>,
 ) -> Result<Json<Response>, Error> {

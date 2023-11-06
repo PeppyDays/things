@@ -20,7 +20,7 @@ pub struct Response {
     refresh_token: String,
 }
 
-pub async fn refresh_access_token(
+pub async fn handle(
     State(mut container): State<Container>,
     Json(request): Json<Request>,
 ) -> Result<Json<Response>, Error> {

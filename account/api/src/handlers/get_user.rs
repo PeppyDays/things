@@ -19,7 +19,7 @@ pub struct Response {
     language: String,
 }
 
-pub async fn get_user(
+pub async fn handle(
     State(container): State<Container>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<Response>, Error> {
