@@ -12,6 +12,7 @@ use domain::user::errors::Error as UserError;
 use crate::{container::Container, errors::Error};
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Response {
     id: Uuid,
     name: String,
