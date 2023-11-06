@@ -6,24 +6,20 @@ use axum::{
 };
 
 use domain::identity::errors::Error as IdentityError;
-use domain::identity::queries::Query as IdentityQuery;
-use domain::identity::{commands::Command as IdentityCommand, models::User as IdentityUser};
+use domain::identity::models::User as IdentityUser;
 
 use crate::{container::Container, errors::Error};
 
 pub async fn handle(
-    State(mut container): State<Container>,
+    State(container): State<Container>,
     TypedHeader(authorization): TypedHeader<Authorization<Bearer>>,
 ) -> Result<StatusCode, Error> {
-    let user = extract_user_from_authorization_header(authorization, &container).await?;
-    let command = IdentityCommand::InvalidateRefreshToken {
-        id: user.id,
-        role: user.role,
-    };
+    let identity_user =
+        extract_identity_user_from_authorization_header(authorization, &container).await?;
 
     container
-        .identity_command_executor
-        .execute(command)
+        .identity_service
+        .invalidate_tokens(identity_user)
         .await
         .map_err(|error| match error {
             IdentityError::EntityNotFound { .. } => {
@@ -38,17 +34,13 @@ pub async fn handle(
     Ok(StatusCode::OK)
 }
 
-async fn extract_user_from_authorization_header(
+async fn extract_identity_user_from_authorization_header(
     authorization: Authorization<Bearer>,
     container: &Container,
 ) -> Result<IdentityUser, Error> {
-    let query = IdentityQuery::GetUserFromAccessToken {
-        access_token: String::from(authorization.token()),
-    };
-
     container
-        .identity_query_reader
-        .read(query)
+        .identity_service
+        .verify_access_token(&authorization.token().to_string().into())
         .await
         .map_err(|error| match error {
             IdentityError::TokenValidationFailed { .. } => {

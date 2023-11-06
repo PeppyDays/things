@@ -3,11 +3,11 @@ use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use domain::identity::commands::Command as IdentityCommand;
 use domain::identity::errors::Error as IdentityError;
 use domain::user::commands::Command as UserCommand;
 use domain::user::errors::Error as UserError;
 
+use crate::handlers::parse_identity_user;
 use crate::{container::Container, errors::Error};
 
 #[derive(Deserialize)]
@@ -36,14 +36,11 @@ pub async fn handle(
 }
 
 async fn register_identity(container: &mut Container, id: Uuid) -> Result<(), Error> {
-    let command = IdentityCommand::RegisterIdentity {
-        id,
-        role: String::from("Member"),
-    };
+    let identity_user = parse_identity_user(id, String::from("Member"))?;
 
     container
-        .identity_command_executor
-        .execute(command)
+        .identity_service
+        .register_identity(identity_user)
         .await
         .map_err(|error| match error {
             IdentityError::AlreadyRegistered { .. } => {

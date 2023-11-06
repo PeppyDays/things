@@ -75,14 +75,14 @@ mod tests {
                 id: Uuid::new_v4(),
                 role: Role::Member,
             },
-            refresh_token: None,
+            tokens: None,
         };
 
         let result = repository.save(identity.clone()).await;
         assert!(result.is_ok());
         assert_eq!(repository.rows.read().unwrap().len(), 1);
 
-        identity.issue_access_and_refresh_tokens().await.unwrap();
+        identity.issue_tokens().await.unwrap();
         let result = repository.save(identity.clone()).await;
         assert!(result.is_ok());
         assert_eq!(repository.rows.read().unwrap().len(), 1);
@@ -97,7 +97,7 @@ mod tests {
         };
         let identity = Identity {
             user: user.clone(),
-            refresh_token: None,
+            tokens: None,
         };
         repository.save(identity.clone()).await.unwrap();
 
