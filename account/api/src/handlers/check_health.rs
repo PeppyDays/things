@@ -1,5 +1,5 @@
 use axum::{http::StatusCode, response::IntoResponse};
 
-pub async fn check_health() -> impl IntoResponse {
+pub async fn handle() -> impl IntoResponse {
     StatusCode::OK
 }
