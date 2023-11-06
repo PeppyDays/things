@@ -8,6 +8,7 @@ use crate::handlers::parse_identity_user;
 use crate::{container::Container, errors::Error};
 
 #[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Request {
     id: Uuid,
     role: String,
@@ -15,6 +16,7 @@ pub struct Request {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Response {
     access_token: String,
     refresh_token: String,
