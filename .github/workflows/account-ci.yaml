@@ -1,0 +1,58 @@
+on:
+  pull_request:
+    paths:
+      - .github/workflows/account-ci.yaml
+      - account/**
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+name: Account CI
+run-name: Account CI by @${{ github.actor }}
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: Check and Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Check
+        run: |
+          cd account
+          cargo check --verbose
+      - name: Format
+        run: |
+          cd account
+          cargo fmt --check --verbose
+      - name: Clippy
+        run: |
+          cd account
+          cargo clippy --verbose -- --deny warnings
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build
+        run: |
+          cd account
+          cargo build --release
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Test
+        run: |
+          cd account
+          cargo test
