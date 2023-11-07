@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -29,15 +27,15 @@ pub enum Role {
     Administrator,
 }
 
-impl FromStr for Role {
-    type Err = Error;
+impl TryFrom<&str> for Role {
+    type Error = Error;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+    fn try_from(role: &str) -> Result<Self, Self::Error> {
+        match role {
             "Member" => Ok(Role::Member),
             "Administrator" => Ok(Role::Administrator),
             _ => Err(Error::InvalidRole {
-                role: s.to_string(),
+                role: role.to_string(),
             }),
         }
     }
@@ -67,12 +65,6 @@ impl From<&str> for AccessToken {
     }
 }
 
-impl From<String> for AccessToken {
-    fn from(token: String) -> Self {
-        Self(token)
-    }
-}
-
 impl From<AccessToken> for String {
     fn from(token: AccessToken) -> Self {
         token.0
@@ -93,12 +85,6 @@ pub struct RefreshToken(pub String);
 impl From<&str> for RefreshToken {
     fn from(token: &str) -> Self {
         Self(token.to_string())
-    }
-}
-
-impl From<String> for RefreshToken {
-    fn from(token: String) -> Self {
-        Self(token)
     }
 }
 

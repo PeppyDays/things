@@ -30,7 +30,7 @@ pub async fn handle(
 
     let tokens = container
         .identity_service
-        .refresh_tokens(identity_user, request.refresh_token.into())
+        .refresh_tokens(identity_user, request.refresh_token.as_str().into())
         .await
         .map_err(|error| match error {
             IdentityError::TokenRefreshFailed { .. } => {

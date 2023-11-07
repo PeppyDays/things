@@ -136,7 +136,7 @@ mod tests {
         let mut identity = Identity::new(
             User {
                 id: Uuid::new_v4(),
-                role: "Member".parse().unwrap(),
+                role: "Member".try_into().unwrap(),
             },
             None,
         );
@@ -153,7 +153,7 @@ mod tests {
         let mut identity = Identity::new(
             User {
                 id: Uuid::new_v4(),
-                role: "Member".parse().unwrap(),
+                role: "Member".try_into().unwrap(),
             },
             None,
         );
@@ -179,7 +179,7 @@ mod tests {
         let identity = Identity::new(
             User {
                 id: Uuid::new_v4(),
-                role: "Member".parse().unwrap(),
+                role: "Member".try_into().unwrap(),
             },
             None,
         );
@@ -205,7 +205,7 @@ mod tests {
         let identity = Identity::new(
             User {
                 id: Uuid::new_v4(),
-                role: "Member".parse().unwrap(),
+                role: "Member".try_into().unwrap(),
             },
             Some(tokens.clone()),
         );
