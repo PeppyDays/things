@@ -35,7 +35,7 @@ impl<R: Repository<User>> QueryReader<R> {
 
     async fn find_events(&self, id: &Uuid) -> Result<Vec<Envelope<User>>, Error> {
         self.repository
-            .find_all_events(&id)
+            .find_all_events(id)
             .await
             .map_err(|error| match error {
                 RepositoryError::NotFound(id) => Error::EntityNotFound { id },
@@ -46,7 +46,7 @@ impl<R: Repository<User>> QueryReader<R> {
     }
 
     async fn load_aggregate(&self, id: &Uuid) -> Result<User, Error> {
-        let events = self.find_events(&id).await?;
+        let events = self.find_events(id).await?;
         Ok(User::load(events).await)
     }
 

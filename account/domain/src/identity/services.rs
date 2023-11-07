@@ -16,7 +16,7 @@ impl<R: Repository> Service<R> {
 impl<R: Repository> Service<R> {
     pub async fn register_identity(&self, user: User) -> Result<(), Error> {
         let identity = self.repository.find_by_user(&user).await?;
-        if let Some(_) = identity {
+        if identity.is_some() {
             return Err(Error::AlreadyRegistered { user });
         }
 
@@ -31,7 +31,7 @@ impl<R: Repository> Service<R> {
             .repository
             .find_by_user(&user)
             .await?
-            .ok_or_else(|| Error::EntityNotFound { user })?;
+            .ok_or(Error::EntityNotFound { user })?;
 
         identity.issue_tokens().await?;
         self.repository.save(identity.clone()).await?;
@@ -48,7 +48,7 @@ impl<R: Repository> Service<R> {
             .repository
             .find_by_user(&user)
             .await?
-            .ok_or_else(|| Error::EntityNotFound { user })?;
+            .ok_or(Error::EntityNotFound { user })?;
 
         identity.verify_refresh_token(&refresh_token).await?;
         identity.issue_tokens().await?;
@@ -62,7 +62,7 @@ impl<R: Repository> Service<R> {
             .repository
             .find_by_user(&user)
             .await?
-            .ok_or_else(|| Error::EntityNotFound { user })?;
+            .ok_or(Error::EntityNotFound { user })?;
 
         identity.invalidate_tokens()?;
         self.repository.save(identity.clone()).await?;
@@ -85,7 +85,7 @@ mod tests {
 
     #[tokio::test]
     async fn identity_registration_stores_user_information_only() {
-        let repository = MemoryRepository::new();
+        let repository = MemoryRepository::default();
         let service = Service::new(repository.clone());
 
         let user = User::new(Uuid::new_v4(), Role::Member);
@@ -98,7 +98,7 @@ mod tests {
 
     #[tokio::test]
     async fn identity_registration_fails_when_existing_entry_found() {
-        let repository = MemoryRepository::new();
+        let repository = MemoryRepository::default();
         let service = Service::new(repository.clone());
 
         let user = User::new(Uuid::new_v4(), Role::Member);
@@ -111,7 +111,7 @@ mod tests {
 
     #[tokio::test]
     async fn issuing_tokens_return_access_and_refresh_tokens_and_persist_refresh_token() {
-        let repository = MemoryRepository::new();
+        let repository = MemoryRepository::default();
         let service = Service::new(repository.clone());
 
         let user = User::new(Uuid::new_v4(), Role::Member);
@@ -133,7 +133,7 @@ mod tests {
 
     #[tokio::test]
     async fn issuing_tokens_fails_when_identity_not_found() {
-        let repository = MemoryRepository::new();
+        let repository = MemoryRepository::default();
         let service = Service::new(repository.clone());
 
         let user = User::new(Uuid::new_v4(), Role::Member);
@@ -145,7 +145,7 @@ mod tests {
 
     #[tokio::test]
     async fn refresh_tokens_succeeds_when_requested_and_persisted_tokens_are_same() {
-        let repository = MemoryRepository::new();
+        let repository = MemoryRepository::default();
         let service = Service::new(repository.clone());
 
         let user = User::new(Uuid::new_v4(), Role::Member);
@@ -163,7 +163,7 @@ mod tests {
 
     #[tokio::test]
     async fn refresh_tokens_fails_when_requested_and_persisted_tokens_are_mismatched() {
-        let repository = MemoryRepository::new();
+        let repository = MemoryRepository::default();
         let service = Service::new(repository.clone());
 
         let user = User::new(Uuid::new_v4(), Role::Member);
@@ -182,7 +182,7 @@ mod tests {
 
     #[tokio::test]
     async fn refresh_access_token_fails_when_no_entry_found() {
-        let repository = MemoryRepository::new();
+        let repository = MemoryRepository::default();
         let service = Service::new(repository.clone());
 
         let user = User::new(Uuid::new_v4(), Role::Member);
@@ -196,7 +196,7 @@ mod tests {
 
     #[tokio::test]
     async fn token_invalidation_removes_persisted_refresh_token() {
-        let repository = MemoryRepository::new();
+        let repository = MemoryRepository::default();
         let service = Service::new(repository.clone());
 
         let user = User::new(Uuid::new_v4(), Role::Member);
