@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use domain::identity::errors::Error as IdentityError;
-use domain::identity::models::Tokens as IdentityTokens;
+use domain::identity::models::entities::Tokens as IdentityTokens;
 use domain::user::errors::Error as UserError;
 use domain::user::queries::Query as UserQuery;
 

@@ -3,8 +3,7 @@ use sqlx::mysql::MySqlRow;
 use sqlx::{query, MySql, Pool, Row};
 
 use domain::identity::errors::Error;
-use domain::identity::models::User;
-use domain::identity::models::{Identity, Role, Tokens};
+use domain::identity::models::entities::{Identity, Role, Tokens, User};
 use domain::identity::repositories::Repository;
 
 #[derive(Clone)]

@@ -6,7 +6,7 @@ use axum::{
 };
 
 use domain::identity::errors::Error as IdentityError;
-use domain::identity::models::User as IdentityUser;
+use domain::identity::models::entities::User as IdentityUser;
 
 use crate::{container::Container, errors::Error};
 

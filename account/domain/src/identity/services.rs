@@ -1,5 +1,5 @@
 use crate::identity::errors::Error;
-use crate::identity::models::{AccessToken, Identity, RefreshToken, Tokens, User};
+use crate::identity::models::entities::{AccessToken, Identity, RefreshToken, Tokens, User};
 use crate::identity::repositories::Repository;
 
 #[derive(Clone)]
@@ -79,7 +79,7 @@ impl<R: Repository> Service<R> {
 mod tests {
     use uuid::Uuid;
 
-    use crate::identity::models::*;
+    use crate::identity::models::entities::*;
     use crate::identity::repositories::*;
     use crate::identity::services::*;
 

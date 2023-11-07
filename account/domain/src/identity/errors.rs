@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
 
-use crate::identity::models::User;
+use crate::identity::models::entities::User;
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
