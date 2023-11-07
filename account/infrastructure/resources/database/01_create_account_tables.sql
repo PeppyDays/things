@@ -2,6 +2,7 @@ CREATE SCHEMA account;
 
 USE account;
 
+-- event sourcing table for user aggregate now
 CREATE TABLE events (
     id                 VARBINARY(16) NOT NULL,
     aggregate_name     VARCHAR(50)   NOT NULL,
@@ -15,10 +16,13 @@ CREATE TABLE events (
 
 CREATE UNIQUE INDEX ix01_events ON events (aggregate_name, aggregate_id, aggregate_sequence);
 
+-- identity aggregate table
 CREATE TABLE identities (
     user_id   VARBINARY(16) NOT NULL,
     user_role VARCHAR(10)   NOT NULL,
-    refresh_token VARCHAR(256) NOT NULL
+    refresh_token VARCHAR(256) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-CREATE UNIQUE INDEX ix01_identities ON identities (user_id, user_role);
+CREATE UNIQUE INDEX ix01_identities ON identities (user_id);
