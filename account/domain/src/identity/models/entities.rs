@@ -41,6 +41,15 @@ impl TryFrom<&str> for Role {
     }
 }
 
+impl From<Role> for &str {
+    fn from(role: Role) -> Self {
+        match role {
+            Role::Member => "Member",
+            Role::Administrator => "Administrator",
+        }
+    }
+}
+
 #[derive(PartialEq, Debug, Clone)]
 pub struct Tokens {
     pub access_token: AccessToken,
