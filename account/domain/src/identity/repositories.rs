@@ -4,8 +4,8 @@ use std::sync::{Arc, RwLock};
 use async_trait::async_trait;
 
 use crate::identity::errors::Error;
-use crate::identity::models::Identity;
-use crate::identity::models::User;
+use crate::identity::models::entities::Identity;
+use crate::identity::models::entities::User;
 
 #[async_trait]
 pub trait Repository {
@@ -64,7 +64,7 @@ impl Repository for MemoryRepository {
 mod tests {
     use uuid::Uuid;
 
-    use crate::identity::models::*;
+    use crate::identity::models::entities::*;
     use crate::identity::repositories::*;
 
     #[tokio::test]

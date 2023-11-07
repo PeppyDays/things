@@ -2,7 +2,7 @@ use axum::http::StatusCode;
 use uuid::Uuid;
 
 use domain::identity::errors::Error as IdentityError;
-use domain::identity::models::User as IdentityUser;
+use domain::identity::models::entities::User as IdentityUser;
 
 use crate::errors::Error;
 

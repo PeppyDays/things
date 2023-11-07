@@ -1,4 +1,3 @@
-use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use jsonwebtoken::{
@@ -6,130 +5,14 @@ use jsonwebtoken::{
     DecodingKey as JwtDecodingKey, EncodingKey as JwtEncodingKey, Header as JwtHeader,
     Validation as JwtValidation,
 };
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 use crate::identity::errors::Error;
+use crate::identity::models::entities::*;
 
 const ACCESS_TOKEN_DURATION_IN_DAYS: u64 = 1;
 const ACCESS_TOKEN_SECRET: &str = "ACCOUNT_ACCESS_TOKEN_SECRET";
 const REFRESH_TOKEN_DURATION_IN_DAYS: u64 = 90;
 const REFRESH_TOKEN_SECRET: &str = "ACCOUNT_REFRESH_TOKEN_SECRET";
-
-#[derive(Clone, PartialEq, Debug)]
-pub struct Identity {
-    pub user: User,
-    pub tokens: Option<Tokens>,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct User {
-    pub id: Uuid,
-    pub role: Role,
-}
-
-impl User {
-    pub fn new(id: Uuid, role: Role) -> Self {
-        Self { id, role }
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub enum Role {
-    Member,
-    Administrator,
-}
-
-impl FromStr for Role {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "Member" => Ok(Role::Member),
-            "Administrator" => Ok(Role::Administrator),
-            _ => Err(Error::InvalidRole {
-                role: s.to_string(),
-            }),
-        }
-    }
-}
-
-#[derive(PartialEq, Debug, Clone)]
-pub struct Tokens {
-    pub access_token: AccessToken,
-    pub refresh_token: RefreshToken,
-}
-
-impl Tokens {
-    pub fn new(access_token: AccessToken, refresh_token: RefreshToken) -> Self {
-        Self {
-            access_token,
-            refresh_token,
-        }
-    }
-}
-
-#[derive(PartialEq, Debug, Clone)]
-pub struct AccessToken(pub String);
-
-impl From<&str> for AccessToken {
-    fn from(token: &str) -> Self {
-        Self(token.to_string())
-    }
-}
-
-impl From<String> for AccessToken {
-    fn from(token: String) -> Self {
-        Self(token)
-    }
-}
-
-impl From<AccessToken> for String {
-    fn from(token: AccessToken) -> Self {
-        token.0
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-struct AccessTokenClaims {
-    iat: u64,
-    exp: u64,
-    id: Uuid,
-    role: Role,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct RefreshToken(pub String);
-
-impl From<&str> for RefreshToken {
-    fn from(token: &str) -> Self {
-        Self(token.to_string())
-    }
-}
-
-impl From<String> for RefreshToken {
-    fn from(token: String) -> Self {
-        Self(token)
-    }
-}
-
-impl From<RefreshToken> for String {
-    fn from(token: RefreshToken) -> Self {
-        token.0
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-struct RefreshTokenClaims {
-    iat: u64,
-    exp: u64,
-}
-
-impl Identity {
-    pub fn new(user: User, tokens: Option<Tokens>) -> Self {
-        Self { user, tokens }
-    }
-}
 
 impl Identity {
     pub async fn issue_tokens(&mut self) -> Result<(), Error> {
@@ -243,7 +126,10 @@ impl Identity {
 
 #[cfg(test)]
 mod tests {
-    use crate::identity::models::*;
+    use uuid::Uuid;
+
+    use crate::identity::errors::*;
+    use crate::identity::models::entities::*;
 
     #[tokio::test]
     async fn refresh_token_verification_succeeds_when_requested_and_persisted_have_same_one() {
