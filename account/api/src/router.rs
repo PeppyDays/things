@@ -8,8 +8,8 @@ pub fn create_router(container: Container) -> Router {
     Router::new()
         .route("/account/user/sign-out", post(sign_out::handle))
         .route(
-            "/account/identity/refresh-access-token",
-            post(refresh_access_token::handle),
+            "/account/identity/refresh-tokens",
+            post(refresh_tokens::handle),
         )
         .route("/account/user/sign-in", post(sign_in::handle))
         .route("/account/user/get-user/:id", get(get_user::handle))
