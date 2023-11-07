@@ -40,7 +40,7 @@ async fn extract_identity_user_from_authorization_header(
 ) -> Result<IdentityUser, Error> {
     container
         .identity_service
-        .verify_access_token(&authorization.token().to_string().into())
+        .verify_access_token(&authorization.token().into())
         .await
         .map_err(|error| match error {
             IdentityError::TokenValidationFailed { .. } => {

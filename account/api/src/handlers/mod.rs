@@ -16,7 +16,7 @@ pub mod sign_up;
 fn parse_identity_user(id: Uuid, role: String) -> Result<IdentityUser, Error> {
     Ok(IdentityUser::new(
         id,
-        role.parse().map_err(|error: IdentityError| {
+        role.as_str().try_into().map_err(|error: IdentityError| {
             Error::new(StatusCode::BAD_REQUEST, error.to_string())
         })?,
     ))
