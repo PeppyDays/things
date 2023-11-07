@@ -45,7 +45,7 @@ impl Identity {
             .map_err(|error| Error::TokenCreationFailed {
                 message: error.to_string(),
             })
-            .map(|token| AccessToken(token))
+            .map(AccessToken)
     }
 
     async fn issue_refresh_token() -> Result<RefreshToken, Error> {
@@ -67,7 +67,7 @@ impl Identity {
             .map_err(|error| Error::TokenCreationFailed {
                 message: error.to_string(),
             })
-            .map(|token| RefreshToken(token))
+            .map(RefreshToken)
     }
 }
 

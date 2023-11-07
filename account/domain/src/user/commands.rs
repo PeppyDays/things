@@ -31,7 +31,7 @@ impl<R: Repository<User>> CommandExecutor<R> {
 
     async fn find_events(&self, id: &Uuid) -> Result<Vec<Envelope<User>>, Error> {
         self.repository
-            .find_all_events(&id)
+            .find_all_events(id)
             .await
             .map_err(|error| match error {
                 RepositoryError::NotFound(id) => Error::EntityNotFound { id },

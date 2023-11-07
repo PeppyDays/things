@@ -13,25 +13,12 @@ pub trait Repository {
     async fn find_by_user(&self, user: &User) -> Result<Option<Identity>, Error>;
 }
 
+#[derive(Default, Clone)]
 pub struct MemoryRepository {
     rows: Arc<RwLock<HashMap<String, Identity>>>,
 }
 
-impl Clone for MemoryRepository {
-    fn clone(&self) -> Self {
-        Self {
-            rows: Arc::clone(&self.rows),
-        }
-    }
-}
-
 impl MemoryRepository {
-    pub fn new() -> Self {
-        Self {
-            rows: Arc::default(),
-        }
-    }
-
     fn get_key(&self, user: &User) -> String {
         format!("{:?}-{:?}", user.id, user.role)
     }
@@ -69,7 +56,7 @@ mod tests {
 
     #[tokio::test]
     async fn repository_saves_identity_whether_it_was_saved_or_not() {
-        let repository = MemoryRepository::new();
+        let repository = MemoryRepository::default();
         let mut identity = Identity {
             user: User {
                 id: Uuid::new_v4(),
@@ -90,7 +77,7 @@ mod tests {
 
     #[tokio::test]
     async fn repository_finds_some_identity_by_user_when_it_exists() {
-        let repository = MemoryRepository::new();
+        let repository = MemoryRepository::default();
         let user = User {
             id: Uuid::new_v4(),
             role: Role::Member,
@@ -108,7 +95,7 @@ mod tests {
 
     #[tokio::test]
     async fn repository_finds_none_identity_by_user_when_it_does_not_exist() {
-        let repository = MemoryRepository::new();
+        let repository = MemoryRepository::default();
         let user = User {
             id: Uuid::new_v4(),
             role: Role::Member,
