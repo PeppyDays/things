@@ -1,0 +1,63 @@
+on:
+  pull_request:
+    paths:
+      - .github/workflows/event-sourcing-ci.yaml
+      - event-sourcing/**
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+name: EventSourcing CI
+run-name: EventSourcing CI by @${{ github.actor }}
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: Check and Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Check
+        run: |
+          cd event-sourcing
+          cargo check --verbose
+      - name: Format
+        run: |
+          cd event-sourcing
+          cargo fmt --check --verbose
+      - name: Clippy
+        run: |
+          cd event-sourcing
+          cargo clippy --verbose -- --deny warnings
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build
+        run: |
+          cd event-sourcing
+          cargo build --release
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run Docker Compose
+        run: |
+          cd event-sourcing
+          docker compose up -d
+          sleep 10
+      - name: Test
+        run: |
+          cd event-sourcing
+          cargo test
