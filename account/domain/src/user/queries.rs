@@ -80,7 +80,7 @@ mod tests {
 
     #[tokio::test]
     async fn verifying_with_correct_password_returns_aggregate_instance() {
-        let repository = MemoryRepository::new();
+        let repository = MemoryRepository::default();
         let mut command_executor = CommandExecutor::new(repository.clone());
         let query_reader = QueryReader::new(repository.clone());
 
@@ -104,7 +104,7 @@ mod tests {
 
     #[tokio::test]
     async fn verifying_with_incorrect_password_returns_error() {
-        let repository = MemoryRepository::new();
+        let repository = MemoryRepository::default();
         let mut command_executor = CommandExecutor::new(repository.clone());
         let query_reader = QueryReader::new(repository.clone());
 

@@ -94,7 +94,7 @@ mod tests {
 
     #[tokio::test]
     async fn new_user_registration_succeeds() {
-        let repository = MemoryRepository::new();
+        let repository = MemoryRepository::default();
         let mut command_executor = CommandExecutor::new(repository.clone());
 
         let id = Uuid::new_v4();
@@ -122,7 +122,7 @@ mod tests {
 
     #[tokio::test]
     async fn user_registration_fails_if_already_registered() {
-        let repository = MemoryRepository::new();
+        let repository = MemoryRepository::default();
         let mut command_executor = CommandExecutor::new(repository);
 
         let id = Uuid::new_v4();
