@@ -89,7 +89,7 @@ impl<A: EventSourced> Repository<A> for PostgresRepository {
             .collect::<Result<Vec<Envelope<A>>, Error>>()?;
 
         match envelopes.is_empty() {
-            true => Err(Error::NotFound(aggregate_id.clone())),
+            true => Err(Error::NotFound(*aggregate_id)),
             false => Ok(envelopes),
         }
     }

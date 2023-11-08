@@ -82,11 +82,11 @@ impl<A: EventSourced> Repository<A> for MySqlRepository {
             .await
             .map_err(|error| Error::Execution(Box::new(error)))?
             .into_iter()
-            .map(|event| Envelope::<A>::try_from(event))
+            .map(Envelope::<A>::try_from)
             .collect::<Result<Vec<Envelope<A>>, Error>>()?;
 
         match envelopes.is_empty() {
-            true => Err(Error::NotFound(aggregate_id.clone())),
+            true => Err(Error::NotFound(*aggregate_id)),
             false => Ok(envelopes),
         }
     }

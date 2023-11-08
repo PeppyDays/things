@@ -12,25 +12,9 @@ use crate::repository::error::Error;
 use crate::repository::interface::Repository;
 use crate::repository::serialization::SerializedEnvelope;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Default)]
 pub struct MemoryRepository {
     rows: Arc<RwLock<HashMap<Uuid, Vec<SerializedEnvelope>>>>,
-}
-
-impl Clone for MemoryRepository {
-    fn clone(&self) -> Self {
-        Self {
-            rows: Arc::clone(&self.rows),
-        }
-    }
-}
-
-impl MemoryRepository {
-    pub fn new() -> Self {
-        Self {
-            rows: Arc::default(),
-        }
-    }
 }
 
 #[async_trait]
@@ -48,8 +32,8 @@ where
             .collect::<Result<Vec<SerializedEnvelope>, Error>>()?;
 
         store
-            .entry(aggregate.get_id().clone())
-            .or_insert_with(|| Vec::new())
+            .entry(aggregate.get_id())
+            .or_insert_with(Vec::new)
             .append(&mut serialized_events);
 
         Ok(())
@@ -60,14 +44,14 @@ where
 
         match store.get(aggregate_id) {
             Some(events) => match events.is_empty() {
-                true => Err(Error::NotFound(aggregate_id.clone())),
+                true => Err(Error::NotFound(*aggregate_id)),
                 false => Ok(events
                     .clone()
                     .into_iter()
                     .map(|event| Envelope::try_from(event).map_err(|_| Error::Unknown))
                     .collect::<Result<Vec<Envelope<A>>, Error>>()?),
             },
-            None => Err(Error::NotFound(aggregate_id.clone())),
+            None => Err(Error::NotFound(*aggregate_id)),
         }
     }
 }
@@ -94,7 +78,7 @@ mod test {
         user.update(events[0].clone()).await;
         user.update(events[1].clone()).await;
 
-        let mut repository = MemoryRepository::new();
+        let mut repository = MemoryRepository::default();
         repository.save(&mut user).await.unwrap();
 
         assert_eq!(user.get_id(), id);
@@ -104,7 +88,7 @@ mod test {
     #[tokio::test]
     async fn repository_returns_not_found_error_vector_when_events_not_exist() {
         let id = Uuid::default();
-        let repository = MemoryRepository::new();
+        let repository = MemoryRepository::default();
 
         let result: Result<Vec<Envelope<User>>, Error> = repository.find_all_events(&id).await;
         let error = result.err().unwrap();
@@ -124,7 +108,7 @@ mod test {
         user.update(events[0].clone()).await;
         user.update(events[1].clone()).await;
 
-        let mut repository = MemoryRepository::new();
+        let mut repository = MemoryRepository::default();
         repository.save(&mut user).await.unwrap();
 
         assert_eq!(user.get_pending_events().len(), 0);
@@ -133,7 +117,7 @@ mod test {
     #[tokio::test]
     async fn repository_returns_ok_when_saving_aggregate_with_no_pending_events() {
         let mut user = User::default();
-        let mut repository = MemoryRepository::new();
+        let mut repository = MemoryRepository::default();
 
         assert_eq!(user.get_pending_events().len(), 0);
         let response = repository.save(&mut user).await;
@@ -154,7 +138,7 @@ mod test {
         user.update(events[0].clone()).await;
         user.update(events[1].clone()).await;
 
-        let mut repository = MemoryRepository::new();
+        let mut repository = MemoryRepository::default();
         repository.save(&mut user).await.unwrap();
 
         let envelopes: Vec<Envelope<User>> = repository.find_all_events(&id).await.unwrap();
