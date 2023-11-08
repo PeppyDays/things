@@ -60,4 +60,4 @@ jobs:
       - name: Test
         run: |
           cd event-sourcing
-          cargo test
+          cargo test -- --include-ignored
