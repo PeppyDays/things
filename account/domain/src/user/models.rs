@@ -113,8 +113,7 @@ impl User {
 
     fn hash_password(password: &str) -> Result<String, Error> {
         let hashed_password = Argon2::default()
-            .hash_password(password.as_bytes(), &SaltString::generate(&mut OsRng))
-            .map_err(|_| Error::HashingPassword)?
+            .hash_password(password.as_bytes(), &SaltString::generate(&mut OsRng))?
             .to_string();
 
         Ok(hashed_password)

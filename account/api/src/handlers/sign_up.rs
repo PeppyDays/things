@@ -68,7 +68,7 @@ async fn register_user(container: &mut Container, request: Request, id: Uuid) ->
         .execute(command)
         .await
         .map_err(|error| match error {
-            UserError::AlreadyRegistered { .. } => {
+            UserError::UserAlreadyRegistered(..) => {
                 Error::new(StatusCode::CONFLICT, error.to_string())
             }
             _ => Error::new(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),

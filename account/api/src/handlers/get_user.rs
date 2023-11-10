@@ -38,7 +38,7 @@ pub async fn handle(
             })
         })
         .map_err(|error| match error {
-            UserError::AlreadyWithdrawn { .. } => {
+            UserError::UserAlreadyWithdrawn(..) => {
                 Error::new(StatusCode::FORBIDDEN, error.to_string())
             }
             _ => Error::new(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),

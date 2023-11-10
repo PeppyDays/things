@@ -49,7 +49,7 @@ async fn verify_credential(container: &Container, request: Request) -> Result<()
         .read(query)
         .await
         .map_err(|error| match error {
-            UserError::InvalidCredential | UserError::EntityNotFound { .. } => Error::new(
+            UserError::InvalidCredential(..) | UserError::UserNotFound(..) => Error::new(
                 StatusCode::UNAUTHORIZED,
                 "Failed to sign in due to the invalid credential",
             ),
