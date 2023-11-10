@@ -21,7 +21,7 @@ pub async fn require_authentication<B>(
         .verify_access_token(&authorization.token().into())
         .await
         .map_err(|error| match error {
-            IdentityError::TokenValidationFailed { .. } => {
+            IdentityError::TokensValidationFailed(..) => {
                 Error::new(StatusCode::UNAUTHORIZED, error.to_string())
             }
             _ => Error::new(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),

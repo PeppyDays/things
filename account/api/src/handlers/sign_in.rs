@@ -69,7 +69,7 @@ async fn issue_tokens(
         .issue_tokens(identity_user)
         .await
         .map_err(|error| match error {
-            IdentityError::EntityNotFound { .. } => Error::new(
+            IdentityError::IdentityNotFound(..) => Error::new(
                 StatusCode::UNAUTHORIZED,
                 "No identity found for the given user",
             ),

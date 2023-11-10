@@ -34,9 +34,7 @@ impl TryFrom<&str> for Role {
         match role {
             "Member" => Ok(Role::Member),
             "Administrator" => Ok(Role::Administrator),
-            _ => Err(Error::InvalidRole {
-                role: role.to_string(),
-            }),
+            _ => Err(Error::InvalidRole(role.to_string())),
         }
     }
 }

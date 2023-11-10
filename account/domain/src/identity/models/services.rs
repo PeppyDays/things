@@ -42,9 +42,7 @@ impl Identity {
         let key = JwtEncodingKey::from_secret(ACCESS_TOKEN_SECRET.as_ref());
 
         jwt_encode(&header, &claims, &key)
-            .map_err(|error| Error::TokenCreationFailed {
-                message: error.to_string(),
-            })
+            .map_err(Error::TokensCreationFailed)
             .map(AccessToken)
     }
 
@@ -64,39 +62,27 @@ impl Identity {
         let key = JwtEncodingKey::from_secret(REFRESH_TOKEN_SECRET.as_ref());
 
         jwt_encode(&header, &claims, &key)
-            .map_err(|error| Error::TokenCreationFailed {
-                message: error.to_string(),
-            })
+            .map_err(Error::TokensCreationFailed)
             .map(RefreshToken)
     }
 }
 
 impl Identity {
     pub async fn verify_refresh_token(&self, refresh_token: &RefreshToken) -> Result<(), Error> {
-        self.tokens.as_ref().map_or_else(
-            || {
-                Err(Error::TokenRefreshFailed {
-                    message: String::from("Persisted refresh token is not found"),
-                })
-            },
-            |token| match &token.refresh_token == refresh_token {
+        self.tokens
+            .as_ref()
+            .ok_or(Error::RefreshTokenNotFound(self.user.id))
+            .map(|tokens| match &tokens.refresh_token == refresh_token {
                 true => Ok(()),
-                false => Err(Error::TokenRefreshFailed {
-                    message: String::from(
-                        "The given refresh token does not match with the persisted refresh token",
-                    ),
-                }),
-            },
-        )?;
+                false => Err(Error::RefreshTokenMismatched(self.user.id)),
+            })??;
 
         jwt_decode::<RefreshTokenClaims>(
             &refresh_token.0,
             &JwtDecodingKey::from_secret(REFRESH_TOKEN_SECRET.as_ref()),
             &JwtValidation::new(JwtAlgorithm::HS256),
         )
-        .map_err(|error| Error::TokenRefreshFailed {
-            message: error.to_string(),
-        })?;
+        .map_err(Error::TokensValidationFailed)?;
 
         Ok(())
     }
@@ -114,9 +100,7 @@ impl Identity {
             &JwtDecodingKey::from_secret(ACCESS_TOKEN_SECRET.as_ref()),
             &JwtValidation::new(JwtAlgorithm::HS256),
         )
-        .map_err(|error| Error::TokenValidationFailed {
-            message: error.to_string(),
-        })
+        .map_err(Error::TokensValidationFailed)
         .map(|token| User {
             id: token.claims.id,
             role: token.claims.role,
@@ -165,13 +149,8 @@ mod tests {
         assert!(result.is_err());
         assert!(matches!(
             result.as_ref().unwrap_err(),
-            Error::TokenRefreshFailed { .. }
+            Error::RefreshTokenMismatched(..)
         ));
-        assert!(result
-            .as_ref()
-            .unwrap_err()
-            .to_string()
-            .contains("does not match"));
     }
 
     #[tokio::test]
@@ -190,7 +169,7 @@ mod tests {
         assert!(result.is_err());
         assert!(matches!(
             result.unwrap_err(),
-            Error::TokenRefreshFailed { .. }
+            Error::RefreshTokenNotFound(..)
         ));
     }
 
@@ -215,12 +194,7 @@ mod tests {
         assert!(result.is_err());
         assert!(matches!(
             result.as_ref().unwrap_err(),
-            Error::TokenRefreshFailed { .. }
+            Error::TokensValidationFailed { .. }
         ));
-        assert!(result
-            .as_ref()
-            .unwrap_err()
-            .to_string()
-            .contains("ExpiredSignature"));
     }
 }

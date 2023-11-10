@@ -27,7 +27,7 @@ impl MemoryRepository {
 #[async_trait]
 impl Repository for MemoryRepository {
     async fn save(&self, identity: Identity) -> Result<(), Error> {
-        let mut store = self.rows.write().map_err(|_| Error::Unknown)?;
+        let mut store = self.rows.write().unwrap();
 
         if let Some(existing_identity) = store.get_mut(&self.get_key(&identity.user)) {
             *existing_identity = identity;
@@ -39,7 +39,8 @@ impl Repository for MemoryRepository {
     }
 
     async fn find_by_user(&self, user: &User) -> Result<Option<Identity>, Error> {
-        let store = self.rows.read().map_err(|_| Error::Unknown)?;
+        let store = self.rows.read().unwrap();
+
         match store.get(&self.get_key(user)) {
             Some(identity) => Ok(Some(identity.clone())),
             None => Ok(None),
