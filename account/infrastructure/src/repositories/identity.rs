@@ -2,7 +2,6 @@ use async_trait::async_trait;
 use sqlx::mysql::MySqlRow;
 use sqlx::{query, MySql, Pool, Row};
 
-use domain::identity::errors::Error;
 use domain::identity::models::entities::{Identity, Tokens, User};
 use domain::identity::repositories::Repository;
 
@@ -17,8 +16,22 @@ impl MySqlRepository {
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("Failed to execute a query: {0}")]
+    QueryExecutionFailed(#[source] sqlx::Error),
+}
+
+impl From<Error> for domain::identity::errors::Error {
+    fn from(error: Error) -> Self {
+        Self::DatabaseOperationFailed(error.into())
+    }
+}
+
 #[async_trait]
 impl Repository for MySqlRepository {
+    type Error = Error;
+
     async fn save(&self, identity: Identity) -> Result<(), Error> {
         query("INSERT INTO identities (user_id, user_role, refresh_token) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE refresh_token = ?")
             .bind(identity.user.id)

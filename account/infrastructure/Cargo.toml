@@ -8,4 +8,5 @@ edition = "2021"
 [dependencies]
 async-trait = "0.1"
 sqlx = { version = "0.7", features = ["runtime-tokio", "mysql", "uuid"] }
+thiserror = "1"
 domain = { path = "../domain" }

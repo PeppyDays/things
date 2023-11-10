@@ -728,6 +728,7 @@ dependencies = [
  "async-trait",
  "domain",
  "sqlx",
+ "thiserror",
 ]
 
 [[package]]
