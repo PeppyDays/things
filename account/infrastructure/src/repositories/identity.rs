@@ -27,7 +27,7 @@ impl Repository for MySqlRepository {
             .bind(&identity.tokens.clone().map(|tokens| Into::<String>::into(tokens.refresh_token)))
             .execute(&self.pool)
             .await
-            .map_err(|error| Error::Database { message: error.to_string() })?;
+            .map_err(Error::QueryExecutionFailed)?;
 
         Ok(())
     }
@@ -45,9 +45,7 @@ impl Repository for MySqlRepository {
                 })
                 .fetch_optional(&self.pool)
                 .await
-                .map_err(|error| Error::Database {
-                    message: error.to_string(),
-                })?;
+                .map_err(Error::QueryExecutionFailed)?;
 
         Ok(identity)
     }

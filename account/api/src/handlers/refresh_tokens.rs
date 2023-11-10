@@ -33,10 +33,10 @@ pub async fn handle(
         .refresh_tokens(identity_user, request.refresh_token.as_str().into())
         .await
         .map_err(|error| match error {
-            IdentityError::TokenRefreshFailed { .. } => {
+            IdentityError::TokensRefreshFailed(..) => {
                 Error::new(StatusCode::UNAUTHORIZED, error.to_string())
             }
-            IdentityError::EntityNotFound { .. } | IdentityError::InvalidRole { .. } => {
+            IdentityError::IdentityNotFound(..) | IdentityError::InvalidRole { .. } => {
                 Error::new(StatusCode::BAD_REQUEST, error.to_string())
             }
             _ => Error::new(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),

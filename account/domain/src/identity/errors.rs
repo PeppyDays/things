@@ -1,48 +1,37 @@
-use std::fmt::{Display, Formatter};
+use uuid::Uuid;
 
-use crate::identity::models::entities::User;
-
-#[derive(Debug, PartialEq)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    AlreadyRegistered { user: User },
-    EntityNotFound { user: User },
-    InvalidRole { role: String },
-    TokenCreationFailed { message: String },
-    TokenRefreshFailed { message: String },
-    TokenValidationFailed { message: String },
-    Database { message: String },
-    Unknown,
-}
+    #[error("Failed to register user {0} because it was already registered")]
+    IdentityAlreadyRegistered(Uuid),
 
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Error::AlreadyRegistered { user } => {
-                write!(f, "User {}'s identity is already registered", user.id)
-            }
-            Error::EntityNotFound { user } => write!(f, "User {}'s identity is not found", user.id),
-            Error::InvalidRole { role } => write!(f, "Role {} is not defined", role),
-            Error::TokenCreationFailed { message } => {
-                write!(
-                    f,
-                    "Error happened during processing authentication token: {}",
-                    message
-                )
-            }
-            Error::TokenRefreshFailed { message } => {
-                write!(f, "Token cannot be refreshed: {}", message)
-            }
-            Error::TokenValidationFailed { message } => {
-                write!(f, "Token cannot be validated: {}", message)
-            }
-            Error::Database { message } => write!(
-                f,
-                "Error happened during interacting with database: {}",
-                message
-            ),
-            Error::Unknown => write!(f, "Unknown error"),
-        }
-    }
-}
+    #[error("Failed to find user {0}'s identity")]
+    IdentityNotFound(Uuid),
 
-impl std::error::Error for Error {}
+    #[error("Failed to transform {0} to the user's role")]
+    InvalidRole(String),
+
+    #[error("Failed to create tokens")]
+    TokensCreationFailed(#[source] jsonwebtoken::errors::Error),
+
+    #[error("Failed to find persisted refresh token of user {0}")]
+    RefreshTokenNotFound(Uuid),
+
+    #[error("Failed to match persisted refresh token to the given refresh token of user {0}")]
+    RefreshTokenMismatched(Uuid),
+
+    #[error("Failed to refresh tokens")]
+    TokensRefreshFailed(#[source] jsonwebtoken::errors::Error),
+
+    #[error("Failed to decode tokens")]
+    TokensValidationFailed(#[source] jsonwebtoken::errors::Error),
+
+    #[error("Failed to connect to the database")]
+    DatabaseConnectionFailed(#[source] sqlx::Error),
+
+    #[error("Failed to execute a query")]
+    QueryExecutionFailed(#[source] sqlx::Error),
+
+    #[error("Failed due to unknown or undefined errors: {0}")]
+    Unexpected(#[source] anyhow::Error),
+}

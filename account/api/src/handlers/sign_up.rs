@@ -45,7 +45,7 @@ async fn register_identity(container: &mut Container, id: Uuid) -> Result<(), Er
         .register_identity(identity_user)
         .await
         .map_err(|error| match error {
-            IdentityError::AlreadyRegistered { .. } => {
+            IdentityError::IdentityAlreadyRegistered(..) => {
                 Error::new(StatusCode::CONFLICT, error.to_string())
             }
             _ => Error::new(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),

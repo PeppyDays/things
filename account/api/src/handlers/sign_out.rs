@@ -14,7 +14,7 @@ pub async fn handle(
         .invalidate_tokens(identity_user)
         .await
         .map_err(|error| match error {
-            IdentityError::EntityNotFound { .. } => {
+            IdentityError::IdentityNotFound(..) => {
                 Error::new(StatusCode::NOT_FOUND, error.to_string())
             }
             IdentityError::InvalidRole { .. } => {

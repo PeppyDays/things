@@ -11,3 +11,6 @@ tokio = { version = "1.32", features = ["rt-multi-thread", "macros"] }
 event-sourcing = { path = "../../event-sourcing" }
 argon2 = { version = "0.5", features = ["std"] }
 jsonwebtoken = "9"
+sqlx = "0.7.2"
+thiserror = "1"
+anyhow = { version = "1", features = ["backtrace"] }

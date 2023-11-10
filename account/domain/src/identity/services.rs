@@ -17,7 +17,7 @@ impl<R: Repository> Service<R> {
     pub async fn register_identity(&self, user: User) -> Result<(), Error> {
         let identity = self.repository.find_by_user(&user).await?;
         if identity.is_some() {
-            return Err(Error::AlreadyRegistered { user });
+            return Err(Error::IdentityAlreadyRegistered(user.id));
         }
 
         let identity = Identity::new(user, None);
@@ -31,7 +31,7 @@ impl<R: Repository> Service<R> {
             .repository
             .find_by_user(&user)
             .await?
-            .ok_or(Error::EntityNotFound { user })?;
+            .ok_or(Error::IdentityNotFound(user.id))?;
 
         identity.issue_tokens().await?;
         self.repository.save(identity.clone()).await?;
@@ -48,7 +48,7 @@ impl<R: Repository> Service<R> {
             .repository
             .find_by_user(&user)
             .await?
-            .ok_or(Error::EntityNotFound { user })?;
+            .ok_or(Error::IdentityNotFound(user.id))?;
 
         identity.verify_refresh_token(&refresh_token).await?;
         identity.issue_tokens().await?;
@@ -62,7 +62,7 @@ impl<R: Repository> Service<R> {
             .repository
             .find_by_user(&user)
             .await?
-            .ok_or(Error::EntityNotFound { user })?;
+            .ok_or(Error::IdentityNotFound(user.id))?;
 
         identity.invalidate_tokens()?;
         self.repository.save(identity.clone()).await?;
@@ -104,9 +104,9 @@ mod tests {
         let user = User::new(Uuid::new_v4(), Role::Member);
         service.register_identity(user.clone()).await.unwrap();
 
-        let result = service.register_identity(user.clone()).await;
+        let error = service.register_identity(user.clone()).await.unwrap_err();
 
-        assert_eq!(result, Err(Error::AlreadyRegistered { user }));
+        assert!(matches!(error, Error::IdentityAlreadyRegistered(..)));
     }
 
     #[tokio::test]
@@ -140,7 +140,7 @@ mod tests {
         let result = service.issue_tokens(user.clone()).await;
 
         assert!(result.is_err());
-        assert_eq!(result, Err(Error::EntityNotFound { user: user.clone() }));
+        assert!(matches!(result, Err(Error::IdentityNotFound(..))));
     }
 
     #[tokio::test]
@@ -177,7 +177,7 @@ mod tests {
             .refresh_tokens(user.clone(), "000.000.000".into())
             .await
             .unwrap_err();
-        assert!(matches!(error, Error::TokenRefreshFailed { .. }));
+        assert!(matches!(error, Error::RefreshTokenMismatched(..)));
     }
 
     #[tokio::test]
@@ -191,7 +191,7 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(matches!(error, Error::EntityNotFound { .. }));
+        assert!(matches!(error, Error::IdentityNotFound(..)));
     }
 
     #[tokio::test]
