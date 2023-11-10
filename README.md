@@ -23,7 +23,7 @@ http get :8080/account/user/check-health
 
 I've finished implementing basic functionalities designed for account bounded context. For further learning, these are actions items to do more.
 
-- [ ] Parse application configuration from environment variables (consider using `dotenvy`)
+- [x] Parse application configuration from environment variables (consider using `dotenvy`)
 - [x] Reorganise error definition and split error messages for the clients and developers (consider using `anyhow`)
 - [ ] Add logging and tracing
 - [ ] Add database migration (consider using `sqlx::migrate!()`)
