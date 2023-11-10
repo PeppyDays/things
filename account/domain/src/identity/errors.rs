@@ -26,11 +26,8 @@ pub enum Error {
     #[error("Failed to decode tokens")]
     TokensValidationFailed(#[source] jsonwebtoken::errors::Error),
 
-    #[error("Failed to connect to the database")]
-    DatabaseConnectionFailed(#[source] sqlx::Error),
-
-    #[error("Failed to execute a query")]
-    QueryExecutionFailed(#[source] sqlx::Error),
+    #[error("Failed to operate on the database: {0}")]
+    DatabaseOperationFailed(#[source] anyhow::Error),
 
     #[error("Failed due to unknown or undefined errors: {0}")]
     Unexpected(#[source] anyhow::Error),

@@ -13,15 +13,22 @@ impl<R: Repository> Service<R> {
     }
 }
 
-impl<R: Repository> Service<R> {
+impl<R: Repository> Service<R>
+where
+    Error: From<<R as crate::identity::repositories::Repository>::Error>,
+{
     pub async fn register_identity(&self, user: User) -> Result<(), Error> {
         let identity = self.repository.find_by_user(&user).await?;
+
         if identity.is_some() {
             return Err(Error::IdentityAlreadyRegistered(user.id));
         }
 
         let identity = Identity::new(user, None);
-        self.repository.save(identity).await?;
+        self.repository
+            .save(identity)
+            .await
+            .map_err(|error| error.into())?;
 
         Ok(())
     }
@@ -80,7 +87,7 @@ mod tests {
     use uuid::Uuid;
 
     use crate::identity::models::entities::*;
-    use crate::identity::repositories::*;
+    use crate::identity::repositories::MemoryRepository;
     use crate::identity::services::*;
 
     #[tokio::test]

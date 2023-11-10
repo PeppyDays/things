@@ -3,14 +3,15 @@ use std::sync::{Arc, RwLock};
 
 use async_trait::async_trait;
 
-use crate::identity::errors::Error;
 use crate::identity::models::entities::Identity;
 use crate::identity::models::entities::User;
 
 #[async_trait]
-pub trait Repository {
-    async fn save(&self, identity: Identity) -> Result<(), Error>;
-    async fn find_by_user(&self, user: &User) -> Result<Option<Identity>, Error>;
+pub trait Repository: Send + Sync {
+    type Error: std::error::Error + Into<crate::identity::errors::Error>;
+
+    async fn save(&self, identity: Identity) -> Result<(), Self::Error>;
+    async fn find_by_user(&self, user: &User) -> Result<Option<Identity>, Self::Error>;
 }
 
 #[derive(Default, Clone)]
@@ -24,10 +25,24 @@ impl MemoryRepository {
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("Failed to get a lock")]
+    RwLockFailed,
+}
+
+impl From<Error> for crate::identity::errors::Error {
+    fn from(error: Error) -> Self {
+        Self::DatabaseOperationFailed(error.into())
+    }
+}
+
 #[async_trait]
 impl Repository for MemoryRepository {
+    type Error = Error;
+
     async fn save(&self, identity: Identity) -> Result<(), Error> {
-        let mut store = self.rows.write().unwrap();
+        let mut store = self.rows.write().map_err(|_| Error::RwLockFailed)?;
 
         if let Some(existing_identity) = store.get_mut(&self.get_key(&identity.user)) {
             *existing_identity = identity;
@@ -39,7 +54,7 @@ impl Repository for MemoryRepository {
     }
 
     async fn find_by_user(&self, user: &User) -> Result<Option<Identity>, Error> {
-        let store = self.rows.read().unwrap();
+        let store = self.rows.read().map_err(|_| Error::RwLockFailed)?;
 
         match store.get(&self.get_key(user)) {
             Some(identity) => Ok(Some(identity.clone())),
