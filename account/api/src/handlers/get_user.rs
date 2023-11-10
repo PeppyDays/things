@@ -1,7 +1,6 @@
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    Json,
 };
 use domain::user::queries::Query;
 use serde::Serialize;
@@ -9,6 +8,7 @@ use uuid::Uuid;
 
 use domain::user::errors::Error as UserError;
 
+use crate::extractors::Json;
 use crate::{container::Container, errors::Error};
 
 #[derive(Serialize)]
