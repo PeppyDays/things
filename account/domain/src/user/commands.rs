@@ -34,10 +34,8 @@ impl<R: Repository<User>> CommandExecutor<R> {
             .find_all_events(id)
             .await
             .map_err(|error| match error {
-                RepositoryError::NotFound(id) => Error::EntityNotFound { id },
-                _ => Error::Database {
-                    message: error.to_string(),
-                },
+                RepositoryError::NotFound(id) => Error::UserNotFound(id),
+                _ => Error::DatabaseOperationFailed(error.into()),
             })
     }
 
@@ -50,9 +48,7 @@ impl<R: Repository<User>> CommandExecutor<R> {
         self.repository
             .save(aggregate)
             .await
-            .map_err(|error| Error::Database {
-                message: error.to_string(),
-            })
+            .map_err(|error| Error::DatabaseOperationFailed(error.into()))
     }
 
     pub async fn execute(&mut self, command: Command) -> Result<(), Error> {
@@ -67,17 +63,15 @@ impl<R: Repository<User>> CommandExecutor<R> {
                 let resulted_events = self.find_events(&id).await;
 
                 match resulted_events {
-                    Ok(_) => Err(Error::AlreadyRegistered { id }),
+                    Ok(_) => Err(Error::UserAlreadyRegistered(id)),
                     Err(error) => match error {
-                        Error::EntityNotFound { id } => {
+                        Error::UserNotFound(id) => {
                             let mut user = User::default();
                             user.register(id, name, password, email, language).await?;
                             self.save_aggregate(&mut user).await?;
                             Ok(())
                         }
-                        _ => Err(Error::Database {
-                            message: error.to_string(),
-                        }),
+                        _ => Err(Error::DatabaseOperationFailed(error.into())),
                     },
                 }
             }
@@ -144,6 +138,6 @@ mod tests {
         };
         let error = command_executor.execute(command).await.err().unwrap();
 
-        assert_eq!(error, Error::AlreadyRegistered { id })
+        assert!(matches!(error, Error::UserAlreadyRegistered(..)));
     }
 }

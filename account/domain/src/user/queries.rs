@@ -38,10 +38,8 @@ impl<R: Repository<User>> QueryReader<R> {
             .find_all_events(id)
             .await
             .map_err(|error| match error {
-                RepositoryError::NotFound(id) => Error::EntityNotFound { id },
-                _ => Error::Database {
-                    message: error.to_string(),
-                },
+                RepositoryError::NotFound(id) => Error::UserNotFound(id),
+                _ => Error::DatabaseOperationFailed(error.into()),
             })
     }
 
@@ -56,7 +54,7 @@ impl<R: Repository<User>> QueryReader<R> {
                 let user = self.load_aggregate(&id).await?;
 
                 match user.is_withdrawn() {
-                    true => Err(Error::AlreadyWithdrawn { id: user.id }),
+                    true => Err(Error::UserAlreadyWithdrawn(user.id)),
                     false => Ok(user),
                 }
             }
@@ -65,7 +63,7 @@ impl<R: Repository<User>> QueryReader<R> {
 
                 match user.verify_password(&password) {
                     true => Ok(user),
-                    false => Err(Error::InvalidCredential),
+                    false => Err(Error::InvalidCredential(user.id)),
                 }
             }
         }
@@ -123,9 +121,9 @@ mod tests {
             password: String::from("thanks"),
         };
 
-        assert_eq!(
-            query_reader.read(query).await,
-            Err(Error::InvalidCredential)
-        );
+        assert!(matches!(
+            query_reader.read(query).await.unwrap_err(),
+            Error::InvalidCredential(..)
+        ));
     }
 }

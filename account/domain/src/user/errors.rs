@@ -1,32 +1,25 @@
-use std::fmt::{Display, Formatter};
 use uuid::Uuid;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    AlreadyRegistered { id: Uuid },
-    AlreadyWithdrawn { id: Uuid },
-    EntityNotFound { id: Uuid },
-    InvalidCredential,
-    HashingPassword,
-    Database { message: String },
-    Unknown,
-}
+    #[error("Failed to register user {0} because it was already registered")]
+    UserAlreadyRegistered(Uuid),
 
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Error::AlreadyRegistered { id } => write!(f, "User {id} is already registered"),
-            Error::AlreadyWithdrawn { id } => write!(f, "User {id} is already withdrawn"),
-            Error::EntityNotFound { id } => write!(f, "User {id} is not found"),
-            Error::InvalidCredential => write!(f, "Credential is not verified"),
-            Error::HashingPassword => write!(f, "Failed to hashing a given password"),
-            Error::Database { message } => write!(
-                f,
-                "Error happened during interacting with database: {message}"
-            ),
-            Error::Unknown => write!(f, "Unknown error happened"),
-        }
-    }
-}
+    #[error("Failed to withdraw user {0} because it was already withdrawn")]
+    UserAlreadyWithdrawn(Uuid),
 
-impl std::error::Error for Error {}
+    #[error("Failed to find user {0}")]
+    UserNotFound(Uuid),
+
+    #[error("Failed to verify credential of user {0}")]
+    InvalidCredential(Uuid),
+
+    #[error("Failed to hashing a password: {0}")]
+    HashingPasswordFailed(#[from] argon2::password_hash::Error),
+
+    #[error("Failed to operate on the database: {0}")]
+    DatabaseOperationFailed(#[source] anyhow::Error),
+
+    #[error("Failed due to unknown or undefined errors: {0}")]
+    Unexpected(#[source] anyhow::Error),
+}
