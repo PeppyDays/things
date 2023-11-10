@@ -1,5 +1,5 @@
+use axum::extract::State;
 use axum::http::StatusCode;
-use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -7,7 +7,8 @@ use domain::identity::errors::Error as IdentityError;
 use domain::user::commands::Command as UserCommand;
 use domain::user::errors::Error as UserError;
 
-use crate::handlers::parse_identity_user;
+use crate::extractors::Json;
+use crate::handlers::common::parse_identity_user;
 use crate::{container::Container, errors::Error};
 
 #[derive(Deserialize)]
