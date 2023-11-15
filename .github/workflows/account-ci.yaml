@@ -61,7 +61,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             account/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('account/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-account-${{ hashFiles('account/Cargo.lock') }}
       - name: Build
         run: |
           cd account
@@ -82,7 +82,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             account/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('account/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-account-${{ hashFiles('account/Cargo.lock') }}
       - name: Test
         run: |
           cd account
