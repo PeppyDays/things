@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 name: Account CI
 run-name: Account CI by @${{ github.actor }}
@@ -22,18 +23,29 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Cache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            account/target/
+          key: ${{ runner.os }}-cargo-account-${{ hashFiles('**/Cargo.lock') }}
+          lookup-only: true
       - name: Check
         run: |
           cd account
-          cargo check --verbose
+          cargo check
       - name: Format
         run: |
           cd account
-          cargo fmt --check --verbose
+          cargo fmt --check
       - name: Clippy
         run: |
           cd account
-          cargo clippy --verbose -- --deny warnings
+          cargo clippy -- --deny warnings
 
   build:
     name: Build
@@ -41,10 +53,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Cache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            account/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Build
         run: |
           cd account
-          cargo build --release
+          cargo build
 
   test:
     name: Test
@@ -52,6 +74,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Cache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            account/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          lookup-only: true
       - name: Test
         run: |
           cd account
