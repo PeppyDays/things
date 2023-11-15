@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 name: EventSourcing CI
 run-name: EventSourcing CI by @${{ github.actor }}
@@ -22,18 +23,29 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Cache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            account/target/
+          key: ${{ runner.os }}-cargo-event-sourcing-${{ hashFiles('**/Cargo.lock') }}
+          lookup-only: true
       - name: Check
         run: |
           cd event-sourcing
-          cargo check --verbose
+          cargo check
       - name: Format
         run: |
           cd event-sourcing
-          cargo fmt --check --verbose
+          cargo fmt --check
       - name: Clippy
         run: |
           cd event-sourcing
-          cargo clippy --verbose -- --deny warnings
+          cargo clippy -- --deny warnings
 
   build:
     name: Build
@@ -41,10 +53,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Cache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            account/target/
+          key: ${{ runner.os }}-cargo-event-sourcing-${{ hashFiles('**/Cargo.lock') }}
       - name: Build
         run: |
           cd event-sourcing
-          cargo build --release
+          cargo build
 
   test:
     name: Test
@@ -52,6 +74,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Cache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            account/target/
+          key: ${{ runner.os }}-cargo-event-sourcing-${{ hashFiles('**/Cargo.lock') }}
+          lookup-only: true
       - name: Run Docker Compose
         run: |
           cd event-sourcing

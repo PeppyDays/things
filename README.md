@@ -28,5 +28,5 @@ I've finished implementing basic functionalities designed for account bounded co
 - [x] Add logging and tracing
 - [ ] Add database migration (consider using `sqlx::migrate!()`)
 - [ ] Add integration tests, running the application locally and test from APIs to the database
-- [ ] Implement caching in GitHub workflow to speed up `cargo build --release`
+- [x] Implement caching in GitHub workflow to speed up `cargo build --release`
 - [ ] Update ADR docs
