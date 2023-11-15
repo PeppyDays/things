@@ -49,12 +49,17 @@ async fn verify_credential(container: &Container, request: Request) -> Result<()
         .user_query_reader
         .read(query)
         .await
-        .map_err(|error| match error {
-            UserError::InvalidCredential(..) | UserError::UserNotFound(..) => Error::new(
-                StatusCode::UNAUTHORIZED,
-                "Failed to sign in due to the invalid credential",
-            ),
-            _ => Error::new(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
+        .map_err(|error| {
+            let message = error.to_string();
+            log::error!("Failed to sign in: {}", &message);
+
+            match error {
+                UserError::InvalidCredential(..) | UserError::UserNotFound(..) => Error::new(
+                    StatusCode::UNAUTHORIZED,
+                    "Failed to sign in due to the invalid credential",
+                ),
+                _ => Error::new(StatusCode::INTERNAL_SERVER_ERROR, &message),
+            }
         })
         .map(|_| ())
 }

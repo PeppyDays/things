@@ -37,10 +37,13 @@ pub async fn handle(
                 language: u.language,
             })
         })
-        .map_err(|error| match error {
-            UserError::UserAlreadyWithdrawn(..) => {
-                Error::new(StatusCode::FORBIDDEN, error.to_string())
+        .map_err(|error| {
+            let message = error.to_string();
+            log::error!("Failed to get user: {}", &message);
+
+            match error {
+                UserError::UserAlreadyWithdrawn(..) => Error::new(StatusCode::FORBIDDEN, &message),
+                _ => Error::new(StatusCode::INTERNAL_SERVER_ERROR, &message),
             }
-            _ => Error::new(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
         })
 }
