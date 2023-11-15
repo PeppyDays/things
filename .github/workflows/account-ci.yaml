@@ -2,7 +2,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/account-ci.yaml
-      - account/**
+      - account/account
     branches:
       - main
   push:
@@ -24,7 +24,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Cache Dependencies
-        uses: actions/cache@v3
+        uses: actions/cache/restore@v3
         with:
           path: |
             ~/.cargo/bin/
@@ -32,8 +32,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             account/target/
-          key: ${{ runner.os }}-cargo-account-${{ hashFiles('**/Cargo.lock') }}
-          lookup-only: true
+          key: ${{ runner.os }}-cargo-account-${{ hashFiles('account/Cargo.lock') }}
       - name: Check
         run: |
           cd account
@@ -62,7 +61,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             account/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('account/Cargo.lock') }}
       - name: Build
         run: |
           cd account
@@ -75,7 +74,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Cache Dependencies
-        uses: actions/cache@v3
+        uses: actions/cache/restore@v3
         with:
           path: |
             ~/.cargo/bin/
@@ -83,8 +82,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             account/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          lookup-only: true
+          key: ${{ runner.os }}-cargo-${{ hashFiles('account/Cargo.lock') }}
       - name: Test
         run: |
           cd account
