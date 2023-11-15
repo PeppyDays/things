@@ -33,14 +33,19 @@ pub async fn handle(
         .identity_service
         .refresh_tokens(identity_user, request.refresh_token.as_str().into())
         .await
-        .map_err(|error| match error {
-            IdentityError::TokensRefreshFailed(..) => {
-                Error::new(StatusCode::UNAUTHORIZED, error.to_string())
+        .map_err(|error| {
+            let message = error.to_string();
+            log::error!("Failed to refresh token: {}", &message);
+
+            match error {
+                IdentityError::TokensRefreshFailed(..) => {
+                    Error::new(StatusCode::UNAUTHORIZED, &message)
+                }
+                IdentityError::IdentityNotFound(..) | IdentityError::InvalidRole { .. } => {
+                    Error::new(StatusCode::BAD_REQUEST, &message)
+                }
+                _ => Error::new(StatusCode::INTERNAL_SERVER_ERROR, &message),
             }
-            IdentityError::IdentityNotFound(..) | IdentityError::InvalidRole { .. } => {
-                Error::new(StatusCode::BAD_REQUEST, error.to_string())
-            }
-            _ => Error::new(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
         })?;
 
     Ok(Json(Response {

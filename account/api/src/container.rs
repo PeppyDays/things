@@ -22,6 +22,7 @@ impl Container {
 
         let user_repository = UserMySqlRepository::new(
             MySqlPoolOptions::new()
+                .min_connections(5)
                 .max_connections(5)
                 .connect(&database_url)
                 .await
@@ -32,6 +33,7 @@ impl Container {
 
         let identity_repository = IdentityMySqlRepository::new(
             MySqlPoolOptions::new()
+                .min_connections(5)
                 .max_connections(5)
                 .connect(&database_url)
                 .await

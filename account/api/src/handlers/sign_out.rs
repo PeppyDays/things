@@ -13,14 +13,15 @@ pub async fn handle(
         .identity_service
         .invalidate_tokens(identity_user)
         .await
-        .map_err(|error| match error {
-            IdentityError::IdentityNotFound(..) => {
-                Error::new(StatusCode::NOT_FOUND, error.to_string())
+        .map_err(|error| {
+            let message = error.to_string();
+            log::error!("Failed to sign out: {}", &message);
+
+            match error {
+                IdentityError::IdentityNotFound(..) => Error::new(StatusCode::NOT_FOUND, &message),
+                IdentityError::InvalidRole { .. } => Error::new(StatusCode::BAD_REQUEST, &message),
+                _ => Error::new(StatusCode::INTERNAL_SERVER_ERROR, &message),
             }
-            IdentityError::InvalidRole { .. } => {
-                Error::new(StatusCode::BAD_REQUEST, error.to_string())
-            }
-            _ => Error::new(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
         })?;
 
     Ok(StatusCode::OK)

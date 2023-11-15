@@ -45,11 +45,16 @@ async fn register_identity(container: &mut Container, id: Uuid) -> Result<(), Er
         .identity_service
         .register_identity(identity_user)
         .await
-        .map_err(|error| match error {
-            IdentityError::IdentityAlreadyRegistered(..) => {
-                Error::new(StatusCode::CONFLICT, error.to_string())
+        .map_err(|error| {
+            let message = error.to_string();
+            log::error!("Failed to register identity: {}", &message);
+
+            match error {
+                IdentityError::IdentityAlreadyRegistered(..) => {
+                    Error::new(StatusCode::CONFLICT, &message)
+                }
+                _ => Error::new(StatusCode::INTERNAL_SERVER_ERROR, &message),
             }
-            _ => Error::new(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
         })?;
 
     Ok(())
@@ -68,11 +73,16 @@ async fn register_user(container: &mut Container, request: Request, id: Uuid) ->
         .user_command_executor
         .execute(command)
         .await
-        .map_err(|error| match error {
-            UserError::UserAlreadyRegistered(..) => {
-                Error::new(StatusCode::CONFLICT, error.to_string())
+        .map_err(|error| {
+            let message = error.to_string();
+            log::error!("Failed to register user: {}", &message);
+
+            match error {
+                UserError::UserAlreadyRegistered(..) => {
+                    Error::new(StatusCode::CONFLICT, error.to_string())
+                }
+                _ => Error::new(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
             }
-            _ => Error::new(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
         })?;
 
     Ok(())
