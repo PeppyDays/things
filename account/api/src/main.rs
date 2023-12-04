@@ -1,8 +1,9 @@
 use std::env;
 use std::net::{Ipv4Addr, SocketAddr};
 
+use tokio::net::TcpListener;
+
 use api::{container::get_container, router};
-use axum::Server;
 
 #[tokio::main]
 async fn main() {
@@ -20,8 +21,12 @@ async fn main() {
         &SocketAddr::from((Ipv4Addr::LOCALHOST, port))
     );
 
-    Server::bind(&SocketAddr::from((Ipv4Addr::LOCALHOST, port)))
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    axum::serve(
+        TcpListener::bind(SocketAddr::from((Ipv4Addr::LOCALHOST, port)))
+            .await
+            .unwrap(),
+        app.into_make_service(),
+    )
+    .await
+    .unwrap();
 }

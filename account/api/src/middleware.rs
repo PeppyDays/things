@@ -1,20 +1,23 @@
 use axum::{
+    body::Body,
     extract::State,
-    headers::{authorization::Bearer, Authorization},
     http::{Request, StatusCode},
     middleware::Next,
     response::Response,
+};
+use axum_extra::{
+    headers::{authorization::Bearer, Authorization},
     TypedHeader,
 };
 
 use crate::{container::Container, errors::Error};
 use domain::identity::errors::Error as IdentityError;
 
-pub async fn require_authentication<B>(
+pub async fn require_authentication(
     TypedHeader(authorization): TypedHeader<Authorization<Bearer>>,
     State(container): State<Container>,
-    mut request: Request<B>,
-    next: Next<B>,
+    mut request: Request<Body>,
+    next: Next,
 ) -> Result<Response, Error> {
     let identity_user = container
         .identity_service
